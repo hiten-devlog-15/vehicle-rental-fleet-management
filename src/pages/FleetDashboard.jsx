@@ -1,0 +1,294 @@
+import { useState } from 'react';
+import Sidebar from '../components/Sidebar';
+import DashboardCard from '../components/DashboardCard';
+import StatusBadge from '../components/StatusBadge';
+import Modal from '../components/Modal';
+import Button from '../components/Button';
+import { vehicles } from '../data/vehicles';
+import {
+  Car, CheckCircle, Wrench, PauseCircle,
+  Plus, Pencil, Trash2, Eye, Bell, User, Search,
+} from 'lucide-react';
+
+export default function FleetDashboard() {
+  const [vehicleList, setVehicleList] = useState(
+    vehicles.map((v, i) => ({
+      ...v,
+      fleetStatus: v.available ? (i % 3 === 2 ? 'Maintenance' : 'Available') : 'Rented',
+    }))
+  );
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editVehicle, setEditVehicle] = useState(null);
+  const [newVehicle, setNewVehicle] = useState({
+    name: '', registrationNo: '', type: '', fleetStatus: 'Available', pricePerDay: '',
+  });
+
+  const stats = [
+    { title: 'Total Vehicles',      value: vehicleList.length, icon: Car,         color: 'blue'    },
+    { title: 'Available',           value: vehicleList.filter((v) => v.fleetStatus === 'Available').length, icon: CheckCircle, color: 'emerald' },
+    { title: 'Currently Rented',    value: vehicleList.filter((v) => v.fleetStatus === 'Rented').length, icon: PauseCircle, color: 'amber'   },
+    { title: 'Under Maintenance',   value: vehicleList.filter((v) => v.fleetStatus === 'Maintenance').length, icon: Wrench, color: 'red' },
+  ];
+
+  const filtered = vehicleList.filter((v) =>
+    !searchQuery ||
+    v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    v.registrationNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    v.type.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleDelete = (id) => {
+    if (window.confirm('Delete this vehicle from the fleet?')) {
+      setVehicleList((prev) => prev.filter((v) => v.id !== id));
+    }
+  };
+
+  const handleAddVehicle = () => {
+    if (!newVehicle.name || !newVehicle.registrationNo) return;
+    const id = `v${Date.now()}`;
+    setVehicleList((prev) => [...prev, {
+      ...newVehicle,
+      id,
+      pricePerDay: Number(newVehicle.pricePerDay) || 0,
+      image: '',
+      available: newVehicle.fleetStatus === 'Available',
+      fuel: 'Petrol',
+      transmission: 'Manual',
+      seats: 5,
+      rating: 4.0,
+      reviews: 0,
+      brand: '',
+      mileage: '',
+    }]);
+    setShowAddModal(false);
+    setNewVehicle({ name: '', registrationNo: '', type: '', fleetStatus: 'Available', pricePerDay: '' });
+  };
+
+  const inputCls = 'w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white';
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-slate-100">
+      <Sidebar role="fleet" />
+
+      <div className="flex-1 overflow-y-auto">
+        {/* Top bar */}
+        <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
+          <div>
+            <h1 className="text-xl font-bold text-slate-800">Fleet Dashboard</h1>
+            <p className="text-xs text-slate-500">Manage your entire vehicle fleet</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              id="fleet-add-vehicle-btn"
+              onClick={() => setShowAddModal(true)}
+              size="sm"
+              icon={Plus}
+            >
+              Add Vehicle
+            </Button>
+            <div className="flex items-center gap-2 pl-3 border-l border-slate-200">
+              <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center">
+                <User size={14} className="text-white" />
+              </div>
+              <div className="hidden sm:block">
+                <p className="text-xs font-semibold text-slate-700">Rajan Verma</p>
+                <p className="text-xs text-slate-400">Fleet Manager</p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div className="p-6 space-y-6 max-w-7xl mx-auto">
+          {/* Stats */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {stats.map((s) => <DashboardCard key={s.title} {...s} />)}
+          </div>
+
+          {/* Vehicle management table */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-4 border-b border-slate-100">
+              <h2 className="font-bold text-slate-800">Vehicle Management</h2>
+              <div className="relative">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  id="fleet-search"
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search vehicles..."
+                  className="pl-8 pr-4 py-2 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-56"
+                />
+              </div>
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50">
+                  <tr>
+                    {['Vehicle ID', 'Name', 'Reg. No.', 'Type', 'Status', 'Price/Day', 'Actions'].map((h) => (
+                      <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filtered.map((v) => (
+                    <tr key={v.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-5 py-3.5 font-mono text-xs text-blue-600 font-semibold">{v.id}</td>
+                      <td className="px-5 py-3.5 font-medium text-slate-800 whitespace-nowrap">{v.name}</td>
+                      <td className="px-5 py-3.5 text-slate-500 font-mono text-xs">{v.registrationNo}</td>
+                      <td className="px-5 py-3.5 text-slate-500">{v.type}</td>
+                      <td className="px-5 py-3.5"><StatusBadge status={v.fleetStatus} /></td>
+                      <td className="px-5 py-3.5 font-semibold text-slate-700">₹{v.pricePerDay.toLocaleString()}</td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-2">
+                          <button
+                            id={`fleet-view-${v.id}`}
+                            title="View Details"
+                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          >
+                            <Eye size={15} />
+                          </button>
+                          <button
+                            id={`fleet-edit-${v.id}`}
+                            title="Edit"
+                            onClick={() => setEditVehicle(v)}
+                            className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                          >
+                            <Pencil size={15} />
+                          </button>
+                          <button
+                            id={`fleet-delete-${v.id}`}
+                            title="Delete"
+                            onClick={() => handleDelete(v.id)}
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="sm:hidden divide-y divide-slate-100">
+              {filtered.map((v) => (
+                <div key={v.id} className="p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <p className="font-semibold text-slate-800 text-sm">{v.name}</p>
+                      <p className="text-xs text-slate-400">{v.type} · {v.registrationNo}</p>
+                    </div>
+                    <StatusBadge status={v.fleetStatus} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-slate-700">₹{v.pricePerDay.toLocaleString()}/day</span>
+                    <div className="flex gap-1.5">
+                      <button onClick={() => setEditVehicle(v)} className="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg"><Pencil size={14} /></button>
+                      <button onClick={() => handleDelete(v.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={14} /></button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Add Vehicle Modal */}
+      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Vehicle" size="sm">
+        <div className="space-y-4">
+          {[
+            { id: 'add-name', label: 'Vehicle Name *', key: 'name', placeholder: 'e.g., Honda City' },
+            { id: 'add-reg', label: 'Registration No. *', key: 'registrationNo', placeholder: 'e.g., MH-01-AB-1234' },
+            { id: 'add-type', label: 'Vehicle Type', key: 'type', placeholder: 'e.g., Sedan, SUV' },
+            { id: 'add-price', label: 'Price Per Day (₹)', key: 'pricePerDay', placeholder: '2500', type: 'number' },
+          ].map(({ id, label, key, placeholder, type = 'text' }) => (
+            <div key={key}>
+              <label htmlFor={id} className="block text-sm font-medium text-slate-700 mb-1.5">{label}</label>
+              <input
+                id={id}
+                type={type}
+                value={newVehicle[key]}
+                onChange={(e) => setNewVehicle({ ...newVehicle, [key]: e.target.value })}
+                placeholder={placeholder}
+                className={inputCls}
+              />
+            </div>
+          ))}
+          <div>
+            <label htmlFor="add-status" className="block text-sm font-medium text-slate-700 mb-1.5">Status</label>
+            <select
+              id="add-status"
+              value={newVehicle.fleetStatus}
+              onChange={(e) => setNewVehicle({ ...newVehicle, fleetStatus: e.target.value })}
+              className={inputCls}
+            >
+              <option>Available</option>
+              <option>Rented</option>
+              <option>Maintenance</option>
+            </select>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" fullWidth onClick={() => setShowAddModal(false)}>Cancel</Button>
+            <Button fullWidth onClick={handleAddVehicle}>Add Vehicle</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Vehicle Modal */}
+      <Modal isOpen={!!editVehicle} onClose={() => setEditVehicle(null)} title="Edit Vehicle" size="sm">
+        {editVehicle && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Vehicle Name</label>
+              <input
+                id="edit-name"
+                type="text"
+                value={editVehicle.name}
+                onChange={(e) => setEditVehicle({ ...editVehicle, name: e.target.value })}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Status</label>
+              <select
+                id="edit-status"
+                value={editVehicle.fleetStatus}
+                onChange={(e) => setEditVehicle({ ...editVehicle, fleetStatus: e.target.value })}
+                className={inputCls}
+              >
+                <option>Available</option>
+                <option>Rented</option>
+                <option>Maintenance</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Price Per Day (₹)</label>
+              <input
+                id="edit-price"
+                type="number"
+                value={editVehicle.pricePerDay}
+                onChange={(e) => setEditVehicle({ ...editVehicle, pricePerDay: Number(e.target.value) })}
+                className={inputCls}
+              />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" fullWidth onClick={() => setEditVehicle(null)}>Cancel</Button>
+              <Button fullWidth onClick={() => {
+                setVehicleList((prev) => prev.map((v) => v.id === editVehicle.id ? editVehicle : v));
+                setEditVehicle(null);
+              }}>Save Changes</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+}
