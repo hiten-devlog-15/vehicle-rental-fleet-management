@@ -1,14 +1,11 @@
 // Home.jsx — Experiment 2: useEffect for document title
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Search, MapPin, Calendar, Car, Shield, Clock, Headphones,
-  Star, ChevronRight, ArrowRight, Zap, Award, Users,
+  Shield, Clock, Zap, Award,
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import VehicleCard from '../components/VehicleCard';
-import { vehicles, vehicleCategories } from '../data/vehicles';
 
 const whyUs = [
   { icon: Shield, title: 'Fully Insured', desc: 'All vehicles come with comprehensive insurance coverage for your peace of mind.', color: 'text-blue-600 bg-blue-100' },
@@ -25,25 +22,11 @@ const stats = [
 ];
 
 export default function Home() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDate, setSelectedDate] = useState('');
-  const [returnDate, setReturnDate] = useState('');
-  const [location, setLocation] = useState('');
-  const [activeCategory, setActiveCategory] = useState('all');
-
   // useEffect — document title (Experiment 2)
   useEffect(() => {
     document.title = 'DriveFleet | Home';
     return () => { document.title = 'DriveFleet'; };
   }, []);
-
-  const featuredVehicles = vehicles.slice(0, 6);
-
-  const filteredByCategory = activeCategory === 'all'
-    ? featuredVehicles
-    : featuredVehicles.filter((v) =>
-        v.type === activeCategory || v.type.includes(activeCategory)
-      );
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -60,7 +43,7 @@ export default function Home() {
         <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-blue-400/10 rounded-full blur-3xl" />
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 w-full">
-          <div className="max-w-3xl">
+          <div className="max-w-3xl mx-auto text-center">
             {/* Badge */}
             <div className="inline-flex items-center gap-2 bg-blue-600/20 border border-blue-500/30 rounded-full px-4 py-1.5 mb-6">
               <Zap size={13} className="text-blue-400" />
@@ -72,53 +55,26 @@ export default function Home() {
               <span className="text-blue-400">for Every</span>{' '}
               Journey
             </h1>
-            <p className="text-lg text-slate-300 leading-relaxed mb-10 max-w-xl">
+            <p className="text-lg text-slate-300 leading-relaxed mb-10 max-w-xl mx-auto">
               From city sedans to rugged SUVs and motorcycles — DriveFleet has the perfect vehicle for every occasion. Book in minutes, drive in style.
             </p>
 
-            {/* Search box */}
-            <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-5 mb-8">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="relative">
-                  <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-500" />
-                  <input
-                    id="hero-location"
-                    type="text"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    placeholder="Pickup City"
-                    className="w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div className="relative">
-                  <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-500" />
-                  <input
-                    id="hero-pickup-date"
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div className="relative">
-                  <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-500" />
-                  <input
-                    id="hero-return-date"
-                    type="date"
-                    value={returnDate}
-                    onChange={(e) => setReturnDate(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <Link
-                  to="/vehicles"
-                  id="hero-search-btn"
-                  className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-sm rounded-xl py-2.5 px-4 transition-all shadow-md hover:shadow-blue-300"
-                >
-                  <Search size={16} />
-                  Browse Vehicles
-                </Link>
-              </div>
+            {/* Auth Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3 justify-center mb-12">
+              <Link
+                to="/login"
+                id="hero-login-btn"
+                className="px-8 py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-blue-500/30"
+              >
+                Login to Your Account
+              </Link>
+              <Link
+                to="/register"
+                id="hero-register-btn"
+                className="px-8 py-3.5 border-2 border-white/40 text-white font-bold rounded-xl hover:bg-white/10 transition-colors"
+              >
+                Create Free Account
+              </Link>
             </div>
 
             {/* Stats */}
@@ -130,60 +86,6 @@ export default function Home() {
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ───── Vehicle Categories ───── */}
-      <section className="py-14 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <p className="text-blue-600 text-sm font-semibold uppercase tracking-wider mb-1">Browse by Type</p>
-              <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">Popular Categories</h2>
-            </div>
-            <Link to="/vehicles" className="hidden sm:flex items-center gap-1 text-sm font-semibold text-blue-600 hover:text-blue-700">
-              View all <ArrowRight size={16} />
-            </Link>
-          </div>
-          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-            {vehicleCategories.map((cat) => (
-              <button
-                key={cat.id}
-                id={`home-cat-${cat.id}`}
-                onClick={() => setActiveCategory(cat.id)}
-                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all duration-200 ${
-                  activeCategory === cat.id
-                    ? 'border-blue-500 bg-blue-50 shadow-md shadow-blue-100'
-                    : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50'
-                }`}
-              >
-                <span className="text-2xl">{cat.icon}</span>
-                <span className={`text-xs font-semibold text-center ${activeCategory === cat.id ? 'text-blue-700' : 'text-slate-600'}`}>
-                  {cat.label}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ───── Featured Vehicles ───── */}
-      <section className="py-14 bg-slate-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <p className="text-blue-600 text-sm font-semibold uppercase tracking-wider mb-1">Available Now</p>
-              <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">Featured Vehicles</h2>
-            </div>
-            <Link to="/vehicles" className="flex items-center gap-1 text-sm font-semibold text-blue-600 hover:text-blue-700">
-              See all <ChevronRight size={16} />
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredByCategory.map((v) => (
-              <VehicleCard key={v.id} vehicle={v} />
-            ))}
           </div>
         </div>
       </section>
@@ -221,11 +123,11 @@ export default function Home() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
-              to="/vehicles"
-              id="cta-browse-btn"
+              to="/login"
+              id="cta-login-btn"
               className="px-8 py-3.5 bg-white text-blue-700 font-bold rounded-xl hover:bg-blue-50 transition-colors shadow-md"
             >
-              Browse Vehicles
+              Login
             </Link>
             <Link
               to="/register"

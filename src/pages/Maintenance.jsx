@@ -1,4 +1,4 @@
-// Maintenance.jsx — Experiment 2: useEffect for document title
+// Maintenance.jsx — Experiment 2 & 3: uses useVehicles context
 import { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import StatusBadge from '../components/StatusBadge';
@@ -6,10 +6,11 @@ import Modal from '../components/Modal';
 import Button from '../components/Button';
 import DashboardCard from '../components/DashboardCard';
 import { maintenanceRecords, maintenanceTypes, maintenanceStatuses } from '../data/maintenance';
-import { vehicles } from '../data/vehicles';
+import { useVehicles } from '../hooks/useVehicles';
 import { Wrench, Plus, CalendarClock, IndianRupee, User, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function Maintenance() {
+  const { vehicles } = useVehicles();
   const [records, setRecords] = useState(maintenanceRecords);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({

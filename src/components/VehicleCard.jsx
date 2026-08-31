@@ -15,6 +15,7 @@ export default function VehicleCard({ vehicle }) {
     rating,
     reviews,
     available,
+    status,
   } = vehicle;
 
   return (
@@ -38,15 +39,7 @@ export default function VehicleCard({ vehicle }) {
           </span>
         </div>
         <div className="absolute top-3 right-3">
-          {available ? (
-            <span className="flex items-center gap-1 text-xs font-semibold bg-emerald-500 text-white px-2.5 py-1 rounded-full">
-              <CheckCircle size={11} /> Available
-            </span>
-          ) : (
-            <span className="flex items-center gap-1 text-xs font-semibold bg-slate-500 text-white px-2.5 py-1 rounded-full">
-              <XCircle size={11} /> Rented
-            </span>
-          )}
+          <StatusBadge status={status || (available ? 'Available' : 'Booked')} />
         </div>
       </div>
 

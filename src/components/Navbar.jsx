@@ -1,24 +1,11 @@
 // Navbar.jsx — Experiment 2: uses useAuth (useContext) to display login state
 import { useState, useEffect } from 'react';
-import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { Car, Menu, X, LayoutDashboard, Wrench, Users, ChevronDown, LogOut, UserCircle } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Car, Menu, X, LogOut } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-
-const navLinks = [
-  { to: '/', label: 'Home' },
-  { to: '/vehicles', label: 'Vehicles' },
-  { to: '/booking', label: 'Book Now' },
-];
-
-const dashboardLinks = [
-  { to: '/customer-dashboard', label: 'My Bookings', icon: LayoutDashboard },
-  { to: '/fleet-dashboard', label: 'Fleet Manager', icon: Users },
-  { to: '/maintenance', label: 'Maintenance', icon: Wrench },
-];
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [dashOpen, setDashOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -28,7 +15,6 @@ export default function Navbar() {
   // useEffect #1 — close mobile menu whenever the route changes
   useEffect(() => {
     setMenuOpen(false);
-    setDashOpen(false);
   }, [location.pathname]);
 
   const handleLogout = () => {
@@ -50,61 +36,6 @@ export default function Navbar() {
               Drive<span className="text-blue-600">Fleet</span>
             </span>
           </Link>
-
-          {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                end={link.to === '/'}
-                id={`nav-${link.label.toLowerCase().replace(/\s+/g, '-')}`}
-                className={({ isActive }) =>
-                  `px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-blue-50 text-blue-600'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-800'
-                  }`
-                }
-              >
-                {link.label}
-              </NavLink>
-            ))}
-
-            {/* Dashboards dropdown */}
-            <div className="relative">
-              <button
-                id="nav-dashboards-btn"
-                onClick={() => setDashOpen(!dashOpen)}
-                className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-colors"
-              >
-                Dashboards
-                <ChevronDown size={14} className={`transition-transform ${dashOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {dashOpen && (
-                <div className="absolute top-full mt-1 left-0 w-52 bg-white border border-slate-200 rounded-xl shadow-lg py-1 z-50">
-                  {dashboardLinks.map((link) => (
-                    <NavLink
-                      key={link.to}
-                      to={link.to}
-                      id={`nav-${link.label.toLowerCase().replace(/\s+/g, '-')}`}
-                      onClick={() => setDashOpen(false)}
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
-                          isActive
-                            ? 'bg-blue-50 text-blue-600'
-                            : 'text-slate-600 hover:bg-slate-50'
-                        }`
-                      }
-                    >
-                      <link.icon size={16} />
-                      {link.label}
-                    </NavLink>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
 
           {/* Desktop Auth — shows user info when logged in, Login/Register when not */}
           <div className="hidden md:flex items-center gap-2">
@@ -170,44 +101,9 @@ export default function Navbar() {
       {/* Mobile Menu */}
       {menuOpen && (
         <div className="md:hidden border-t border-slate-100 bg-white px-4 pb-4 pt-2 flex flex-col gap-1">
-          {navLinks.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              end={link.to === '/'}
-              onClick={() => setMenuOpen(false)}
-              className={({ isActive }) =>
-                `block px-3 py-2 rounded-lg text-sm font-medium ${
-                  isActive ? 'bg-blue-50 text-blue-600' : 'text-slate-700 hover:bg-slate-100'
-                }`
-              }
-            >
-              {link.label}
-            </NavLink>
-          ))}
-
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-3 pt-2">
-            Dashboards
-          </p>
-          {dashboardLinks.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              onClick={() => setMenuOpen(false)}
-              className={({ isActive }) =>
-                `flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
-                  isActive ? 'bg-blue-50 text-blue-600' : 'text-slate-700 hover:bg-slate-100'
-                }`
-              }
-            >
-              <link.icon size={15} />
-              {link.label}
-            </NavLink>
-          ))}
-
           {/* Mobile auth section */}
           {isAuthenticated ? (
-            <div className="mt-3 pt-3 border-t border-slate-100">
+            <div className="mt-1 pt-1">
               <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-xl mb-2">
                 <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white text-xs font-bold">
                   {user.avatar}
@@ -227,7 +123,7 @@ export default function Navbar() {
               </button>
             </div>
           ) : (
-            <div className="flex gap-2 mt-3">
+            <div className="flex gap-2 mt-1">
               <Link
                 to="/login"
                 onClick={() => setMenuOpen(false)}

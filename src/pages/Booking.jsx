@@ -5,11 +5,12 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import BookingForm from '../components/BookingForm';
 import BookingSummary from '../components/BookingSummary';
-import { vehicles } from '../data/vehicles';
+import { useVehicles } from '../hooks/useVehicles';
 
 export default function Booking() {
   const [searchParams] = useSearchParams();
   const vehicleId = searchParams.get('vehicle') || '';
+  const { vehicles } = useVehicles();
 
   const [formData, setFormData] = useState({
     vehicleId,

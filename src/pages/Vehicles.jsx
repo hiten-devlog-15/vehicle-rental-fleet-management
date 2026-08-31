@@ -10,6 +10,7 @@ import VehicleGrid from '../components/VehicleGrid';
 import SearchBar from '../components/SearchBar';
 import { mockVehicles } from '../data/mockVehicles';
 import { useFetch } from '../hooks/useFetch';
+import { useVehicles } from '../hooks/useVehicles';
 import { SlidersHorizontal, ChevronDown, Loader2, AlertCircle } from 'lucide-react';
 
 const fuelTypes = ['All', 'Petrol', 'Diesel', 'Electric'];
@@ -30,9 +31,12 @@ export default function Vehicles() {
   const [sortBy, setSortBy] = useState('default');
   const [showFilters, setShowFilters] = useState(false);
 
+  // useVehicles — Context Hook (Experiment 3)
+  const { vehicles } = useVehicles();
+
   // useFetch — Custom Hook (Experiment 2)
   // Simulates loading vehicle data asynchronously from our mock data source.
-  const { data: vehicles, loading, error } = useFetch(mockVehicles);
+  const { loading, error } = useFetch(mockVehicles);
 
   // useEffect — document title (Experiment 2)
   useEffect(() => {

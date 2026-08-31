@@ -1,4 +1,4 @@
-// FleetDashboard.jsx — Experiment 2: uses useAuth (useContext) + useEffect
+// FleetDashboard.jsx — Experiment 2 & 3: uses useAuth, useVehicles, useBookings
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
@@ -6,20 +6,24 @@ import DashboardCard from '../components/DashboardCard';
 import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
 import Button from '../components/Button';
-import { vehicles } from '../data/vehicles';
 import { useAuth } from '../hooks/useAuth';
+import { useVehicles } from '../hooks/useVehicles';
+import { useBookings } from '../hooks/useBookings';
 import {
   Car, CheckCircle, Wrench, PauseCircle,
-  Plus, Pencil, Trash2, Eye, Bell, User, Search, LogIn,
+  Plus, Pencil, Trash2, Eye, Bell, User, Search, LogIn, Calendar,
 } from 'lucide-react';
 
 export default function FleetDashboard() {
-  const [vehicleList, setVehicleList] = useState(
-    vehicles.map((v, i) => ({
-      ...v,
-      fleetStatus: v.available ? (i % 3 === 2 ? 'Maintenance' : 'Available') : 'Rented',
-    }))
-  );
+  const {
+    vehicles,
+    addVehicle,
+    removeVehicle,
+    updateVehicle,
+    updateVehicleStatus,
+  } = useVehicles();
+  const { bookings } = useBookings();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editVehicle, setEditVehicle] = useState(null);
@@ -37,13 +41,14 @@ export default function FleetDashboard() {
   }, []);
 
   const stats = [
-    { title: 'Total Vehicles',      value: vehicleList.length, icon: Car,         color: 'blue'    },
-    { title: 'Available',           value: vehicleList.filter((v) => v.fleetStatus === 'Available').length, icon: CheckCircle, color: 'emerald' },
-    { title: 'Currently Rented',    value: vehicleList.filter((v) => v.fleetStatus === 'Rented').length, icon: PauseCircle, color: 'amber'   },
-    { title: 'Under Maintenance',   value: vehicleList.filter((v) => v.fleetStatus === 'Maintenance').length, icon: Wrench, color: 'red' },
+    { title: 'Total Vehicles',      value: vehicles.length, icon: Car,         color: 'blue'    },
+    { title: 'Available',           value: vehicles.filter((v) => v.status === 'Available').length, icon: CheckCircle, color: 'emerald' },
+    { title: 'Booked Vehicles',     value: vehicles.filter((v) => v.status === 'Booked').length, icon: PauseCircle, color: 'amber'   },
+    { title: 'Under Maintenance',   value: vehicles.filter((v) => v.status === 'Maintenance').length, icon: Wrench, color: 'red' },
+    { title: 'Total Bookings',      value: bookings.length, icon: Calendar,    color: 'indigo'  },
   ];
 
-  const filtered = vehicleList.filter((v) =>
+  const filtered = vehicles.filter((v) =>
     !searchQuery ||
     v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     v.registrationNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -52,27 +57,32 @@ export default function FleetDashboard() {
 
   const handleDelete = (id) => {
     if (window.confirm('Delete this vehicle from the fleet?')) {
-      setVehicleList((prev) => prev.filter((v) => v.id !== id));
+      removeVehicle(id);
     }
   };
 
   const handleAddVehicle = () => {
     if (!newVehicle.name || !newVehicle.registrationNo) return;
     const id = `v${Date.now()}`;
-    setVehicleList((prev) => [...prev, {
-      ...newVehicle,
+    addVehicle({
       id,
+      name: newVehicle.name,
+      registrationNo: newVehicle.registrationNo,
+      type: newVehicle.type || 'SUV',
       pricePerDay: Number(newVehicle.pricePerDay) || 0,
-      image: '',
+      status: newVehicle.fleetStatus,
       available: newVehicle.fleetStatus === 'Available',
+      image: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800&q=80',
       fuel: 'Petrol',
       transmission: 'Manual',
       seats: 5,
       rating: 4.0,
       reviews: 0,
-      brand: '',
-      mileage: '',
-    }]);
+      brand: newVehicle.name.split(' ')[0] || 'Generic',
+      mileage: '15.0 kmpl',
+      description: 'Newly added fleet vehicle.',
+      features: ['Air Conditioning', 'Power Steering'],
+    });
     setShowAddModal(false);
     setNewVehicle({ name: '', registrationNo: '', type: '', fleetStatus: 'Available', pricePerDay: '' });
   };
@@ -197,7 +207,20 @@ export default function FleetDashboard() {
                       <td className="px-5 py-3.5 font-medium text-slate-800 whitespace-nowrap">{v.name}</td>
                       <td className="px-5 py-3.5 text-slate-500 font-mono text-xs">{v.registrationNo}</td>
                       <td className="px-5 py-3.5 text-slate-500">{v.type}</td>
-                      <td className="px-5 py-3.5"><StatusBadge status={v.fleetStatus} /></td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex flex-col gap-1">
+                          <StatusBadge status={v.status} />
+                          <select
+                            value={v.status}
+                            onChange={(e) => updateVehicleStatus(v.id, e.target.value)}
+                            className="mt-1 text-xs border border-slate-200 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white cursor-pointer"
+                          >
+                            <option value="Available">Available</option>
+                            <option value="Booked">Booked</option>
+                            <option value="Maintenance">Maintenance</option>
+                          </select>
+                        </div>
+                      </td>
                       <td className="px-5 py-3.5 font-semibold text-slate-700">₹{v.pricePerDay.toLocaleString()}</td>
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2">
@@ -241,7 +264,18 @@ export default function FleetDashboard() {
                       <p className="font-semibold text-slate-800 text-sm">{v.name}</p>
                       <p className="text-xs text-slate-400">{v.type} · {v.registrationNo}</p>
                     </div>
-                    <StatusBadge status={v.fleetStatus} />
+                    <div className="flex flex-col items-end gap-1">
+                      <StatusBadge status={v.status} />
+                      <select
+                        value={v.status}
+                        onChange={(e) => updateVehicleStatus(v.id, e.target.value)}
+                        className="text-xs border border-slate-200 rounded px-1 bg-white cursor-pointer"
+                      >
+                        <option value="Available">Available</option>
+                        <option value="Booked">Booked</option>
+                        <option value="Maintenance">Maintenance</option>
+                      </select>
+                    </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-slate-700">₹{v.pricePerDay.toLocaleString()}/day</span>
@@ -286,9 +320,9 @@ export default function FleetDashboard() {
               onChange={(e) => setNewVehicle({ ...newVehicle, fleetStatus: e.target.value })}
               className={inputCls}
             >
-              <option>Available</option>
-              <option>Rented</option>
-              <option>Maintenance</option>
+              <option value="Available">Available</option>
+              <option value="Booked">Booked</option>
+              <option value="Maintenance">Maintenance</option>
             </select>
           </div>
           <div className="flex gap-3 pt-2">
@@ -316,13 +350,13 @@ export default function FleetDashboard() {
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Status</label>
               <select
                 id="edit-status"
-                value={editVehicle.fleetStatus}
-                onChange={(e) => setEditVehicle({ ...editVehicle, fleetStatus: e.target.value })}
+                value={editVehicle.status || (editVehicle.available ? 'Available' : 'Booked')}
+                onChange={(e) => setEditVehicle({ ...editVehicle, status: e.target.value, available: e.target.value === 'Available' })}
                 className={inputCls}
               >
-                <option>Available</option>
-                <option>Rented</option>
-                <option>Maintenance</option>
+                <option value="Available">Available</option>
+                <option value="Booked">Booked</option>
+                <option value="Maintenance">Maintenance</option>
               </select>
             </div>
             <div>
@@ -338,7 +372,7 @@ export default function FleetDashboard() {
             <div className="flex gap-3 pt-2">
               <Button variant="outline" fullWidth onClick={() => setEditVehicle(null)}>Cancel</Button>
               <Button fullWidth onClick={() => {
-                setVehicleList((prev) => prev.map((v) => v.id === editVehicle.id ? editVehicle : v));
+                updateVehicle(editVehicle);
                 setEditVehicle(null);
               }}>Save Changes</Button>
             </div>

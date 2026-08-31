@@ -1,24 +1,28 @@
-// CustomerDashboard.jsx — Experiment 2: uses useAuth (useContext) + useEffect
+// CustomerDashboard.jsx — Experiment 2 & 3: uses useAuth, useBookings, useVehicles
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import DashboardCard from '../components/DashboardCard';
 import StatusBadge from '../components/StatusBadge';
-import { bookings } from '../data/bookings';
-import { vehicles } from '../data/vehicles';
 import { useAuth } from '../hooks/useAuth';
+import { useBookings } from '../hooks/useBookings';
+import { useVehicles } from '../hooks/useVehicles';
 import {
   Car, Calendar, CheckCircle, Clock, ChevronRight,
   Bell, User, MapPin, LogIn,
 } from 'lucide-react';
 
-const customerBookings = bookings.filter((b) => b.customerId === 'C001');
-const activeBooking = customerBookings.find((b) => b.status === 'Active');
-const activeVehicle = activeBooking ? vehicles.find((v) => v.id === activeBooking.vehicleId) : null;
-
 export default function CustomerDashboard() {
   // useAuth — Custom Hook consuming AuthContext (Experiment 2)
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const { bookings, cancelBooking } = useBookings();
+  const { vehicles } = useVehicles();
+
+  const customerId = user?.id || 'C001';
+  // Support both C001 (mock data) and U001 (logged-in customer) so mock bookings show up.
+  const customerBookings = bookings.filter((b) => b.customerId === customerId || (customerId === 'U001' && b.customerId === 'C001'));
+  const activeBooking = customerBookings.find((b) => b.status === 'Active');
+  const activeVehicle = activeBooking ? vehicles.find((v) => v.id === activeBooking.vehicleId) : null;
 
   // useEffect — document title (Experiment 2)
   useEffect(() => {
@@ -158,7 +162,7 @@ export default function CustomerDashboard() {
               <table className="w-full text-sm">
                 <thead className="bg-slate-50">
                   <tr>
-                    {['Booking ID', 'Vehicle', 'Pickup', 'Return', 'Amount', 'Status'].map((h) => (
+                    {['Booking ID', 'Vehicle', 'Pickup', 'Return', 'Amount', 'Status', 'Actions'].map((h) => (
                       <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                         {h}
                       </th>
@@ -174,6 +178,21 @@ export default function CustomerDashboard() {
                       <td className="px-5 py-3.5 text-slate-500">{b.returnDate}</td>
                       <td className="px-5 py-3.5 font-semibold text-slate-700">₹{b.totalAmount.toLocaleString()}</td>
                       <td className="px-5 py-3.5"><StatusBadge status={b.status} /></td>
+                      <td className="px-5 py-3.5">
+                        {b.status !== 'Cancelled' && b.status !== 'Completed' && (
+                          <button
+                            id={`cancel-booking-${b.id}`}
+                            onClick={() => {
+                              if (window.confirm(`Are you sure you want to cancel booking ${b.id}?`)) {
+                                cancelBooking(b.id);
+                              }
+                            }}
+                            className="text-xs font-semibold text-red-600 hover:text-red-700 hover:underline transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -195,6 +214,20 @@ export default function CustomerDashboard() {
                     <span>{b.pickupDate} → {b.returnDate}</span>
                     <span className="font-semibold text-slate-700">₹{b.totalAmount.toLocaleString()}</span>
                   </div>
+                  {b.status !== 'Cancelled' && b.status !== 'Completed' && (
+                    <div className="mt-2 text-right">
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Are you sure you want to cancel booking ${b.id}?`)) {
+                            cancelBooking(b.id);
+                          }
+                        }}
+                        className="text-xs font-semibold text-red-600 hover:text-red-700 hover:underline transition-colors"
+                      >
+                        Cancel Booking
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

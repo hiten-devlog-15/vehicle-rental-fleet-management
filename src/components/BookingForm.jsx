@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { vehicles } from '../data/vehicles';
+import { useState, useEffect } from 'react';
 import Button from './Button';
+import { useVehicles } from '../hooks/useVehicles';
+import { useBookings } from '../hooks/useBookings';
+import { useAuth } from '../hooks/useAuth';
 
 function Field({ label, id, error, children }) {
   return (
@@ -18,9 +20,13 @@ const inputCls =
   'w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder-slate-400 bg-white';
 
 export default function BookingForm({ initialVehicleId, onFormChange }) {
+  const { vehicles } = useVehicles();
+  const { addBooking } = useBookings();
+  const { user } = useAuth();
+
   const [form, setForm] = useState({
-    name: '',
-    email: '',
+    name: user?.name || '',
+    email: user?.email || '',
     phone: '',
     vehicleId: initialVehicleId || '',
     pickupDate: '',
@@ -31,6 +37,18 @@ export default function BookingForm({ initialVehicleId, onFormChange }) {
 
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
+  const [lastBookingId, setLastBookingId] = useState('');
+
+  // Sync form name and email if user changes
+  useEffect(() => {
+    if (user) {
+      setForm((prev) => ({
+        ...prev,
+        name: user.name,
+        email: user.email,
+      }));
+    }
+  }, [user]);
 
   const validate = () => {
     const e = {};
@@ -62,6 +80,35 @@ export default function BookingForm({ initialVehicleId, onFormChange }) {
       setErrors(errs);
       return;
     }
+    
+    const selectedVeh = vehicles.find((v) => v.id === form.vehicleId);
+    const diff = new Date(form.returnDate) - new Date(form.pickupDate);
+    const days = Math.max(Math.ceil(diff / (1000 * 60 * 60 * 24)), 1);
+    const pricePerDay = selectedVeh?.pricePerDay || 0;
+    const totalAmount = (pricePerDay + 200) * days;
+    const bookingId = `BK-${Math.floor(Math.random() * 90000) + 10000}`;
+
+    addBooking({
+      id: bookingId,
+      customerId: user?.id || 'C001',
+      customerName: form.name,
+      customerEmail: form.email,
+      customerPhone: form.phone,
+      vehicleId: form.vehicleId,
+      vehicleName: selectedVeh?.name || 'Unknown Vehicle',
+      vehicleType: selectedVeh?.type || 'Unknown Type',
+      pickupDate: form.pickupDate,
+      returnDate: form.returnDate,
+      days,
+      pricePerDay,
+      totalAmount,
+      pickupLocation: form.pickupLocation,
+      status: 'Confirmed',
+      bookingDate: new Date().toISOString().split('T')[0],
+      notes: form.notes,
+    });
+
+    setLastBookingId(bookingId);
     setSubmitted(true);
   };
 
@@ -73,12 +120,12 @@ export default function BookingForm({ initialVehicleId, onFormChange }) {
         <p className="text-slate-600 mt-2">
           Your booking reference is{' '}
           <span className="font-mono font-bold text-blue-600">
-            BK-{Math.floor(Math.random() * 90000) + 10000}
+            {lastBookingId}
           </span>
           . A confirmation has been sent to <strong>{form.email}</strong>.
         </p>
         <button
-          onClick={() => { setSubmitted(false); setForm({ name: '', email: '', phone: '', vehicleId: initialVehicleId || '', pickupDate: '', returnDate: '', pickupLocation: '', notes: '' }); }}
+          onClick={() => { setSubmitted(false); setForm({ name: user?.name || '', email: user?.email || '', phone: '', vehicleId: initialVehicleId || '', pickupDate: '', returnDate: '', pickupLocation: '', notes: '' }); }}
           className="mt-6 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors"
         >
           Make Another Booking

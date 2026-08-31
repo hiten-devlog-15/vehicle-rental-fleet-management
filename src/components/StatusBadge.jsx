@@ -9,6 +9,7 @@ const statusConfig = {
   Cancelled:   { bg: 'bg-red-100',     text: 'text-red-600',     dot: 'bg-red-400'     },
   // Vehicle statuses
   Available:   { bg: 'bg-emerald-100', text: 'text-emerald-700', dot: 'bg-emerald-500' },
+  Booked:      { bg: 'bg-blue-100',    text: 'text-blue-700',    dot: 'bg-blue-500'    },
   Rented:      { bg: 'bg-blue-100',    text: 'text-blue-700',    dot: 'bg-blue-500'    },
   Maintenance: { bg: 'bg-orange-100',  text: 'text-orange-700',  dot: 'bg-orange-400'  },
   // Maintenance statuses

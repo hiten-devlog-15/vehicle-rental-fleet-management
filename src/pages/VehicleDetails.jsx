@@ -1,6 +1,6 @@
 // VehicleDetails.jsx — Experiment 2: useEffect for dynamic document title
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { vehicles } from '../data/vehicles';
+import { useVehicles } from '../hooks/useVehicles';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import StatusBadge from '../components/StatusBadge';
@@ -13,7 +13,8 @@ import { useState, useEffect } from 'react';
 export default function VehicleDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const vehicle = vehicles.find((v) => v.id === id);
+  const { getVehicleById } = useVehicles();
+  const vehicle = getVehicleById(id);
 
   const [pickupDate, setPickupDate] = useState('');
   const [returnDate, setReturnDate] = useState('');
@@ -94,7 +95,7 @@ export default function VehicleDetails() {
                     </span>
                   </div>
                   <div className="absolute top-4 right-4">
-                    <StatusBadge status={vehicle.available ? 'Available' : 'Rented'} />
+                    <StatusBadge status={vehicle.status || (vehicle.available ? 'Available' : 'Booked')} />
                   </div>
                 </div>
               </div>
