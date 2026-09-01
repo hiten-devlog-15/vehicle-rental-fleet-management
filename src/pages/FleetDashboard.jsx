@@ -95,7 +95,7 @@ export default function FleetDashboard() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-100">
-      <Sidebar role="fleet" />
+      <Sidebar />
 
       <div className="flex-1 overflow-y-auto">
         {/* Top bar */}

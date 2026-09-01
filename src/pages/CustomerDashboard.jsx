@@ -43,7 +43,7 @@ export default function CustomerDashboard() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-100">
-      <Sidebar role="customer" />
+      <Sidebar />
 
       {/* Main content */}
       <div className="flex-1 overflow-y-auto">

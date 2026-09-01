@@ -1,4 +1,4 @@
-// Sidebar.jsx — Experiment 2: wires Logout button to useAuth logout()
+// Sidebar.jsx — RBAC: filters nav links by user.role from AuthContext
 import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import {
@@ -7,21 +7,30 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
-const links = [
-  { to: '/customer-dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/vehicles', icon: Car, label: 'Vehicles' },
-  { to: '/booking', icon: Calendar, label: 'Book Vehicle' },
-  { to: '/maintenance', icon: Wrench, label: 'Maintenance' },
-  { to: '/fleet-dashboard', icon: Settings, label: 'Fleet Manager' },
+// Master link list — each entry declares which roles may see it
+const ALL_LINKS = [
+  { to: '/dashboard',       icon: LayoutDashboard, label: 'Dashboard',     roles: ['customer', 'fleet_manager', 'admin'] },
+  { to: '/vehicles',        icon: Car,             label: 'Vehicles',      roles: ['customer', 'fleet_manager', 'admin'] },
+  { to: '/booking',         icon: Calendar,        label: 'Book Vehicle',  roles: ['customer', 'admin'] },
+  { to: '/maintenance',     icon: Wrench,          label: 'Maintenance',   roles: ['fleet_manager', 'admin'] },
+  { to: '/fleet-dashboard', icon: Settings,        label: 'Fleet Manager', roles: ['fleet_manager', 'admin'] },
 ];
 
-export default function Sidebar({ role = 'customer' }) {
+export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
 
-  // useAuth — Custom Hook (Experiment 2) — access logout and user info
+  // useAuth — Custom Hook — access logout, user info, and role for RBAC
   const { logout, user, isAuthenticated } = useAuth();
+
+  // Derive visible links based on the authenticated user's role
+  const visibleLinks = isAuthenticated && user
+    ? ALL_LINKS.filter((link) => link.roles.includes(user.role))
+    : [];
+
+  // Human-readable role label for the badge
+  const roleLabel = user?.role ? user.role.replace(/_/g, ' ') : 'Guest';
 
   const handleLogout = () => {
     logout();
@@ -45,8 +54,8 @@ export default function Sidebar({ role = 'customer' }) {
       {/* Role badge + user info */}
       {!collapsed && (
         <div className="px-4 pt-4 pb-2">
-          <span className="text-xs font-semibold bg-blue-600/30 text-blue-300 px-2.5 py-1 rounded-full uppercase tracking-wider">
-            {role === 'fleet' ? 'Fleet Manager' : 'Customer'}
+          <span className="text-xs font-semibold bg-blue-600/30 text-blue-300 px-2.5 py-1 rounded-full uppercase tracking-wider capitalize">
+            {roleLabel}
           </span>
           {/* Show logged-in user name from context */}
           {isAuthenticated && user && (
@@ -59,7 +68,7 @@ export default function Sidebar({ role = 'customer' }) {
 
       {/* Nav links */}
       <nav className="flex-1 px-2 py-3 space-y-1 overflow-y-auto">
-        {links.map(({ to, icon: Icon, label }) => (
+        {visibleLinks.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}

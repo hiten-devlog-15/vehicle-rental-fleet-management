@@ -1,4 +1,4 @@
-// Maintenance.jsx — Experiment 2 & 3: uses useVehicles context
+// Maintenance.jsx — RBAC: uses useAuth for user info display
 import { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import StatusBadge from '../components/StatusBadge';
@@ -7,10 +7,14 @@ import Button from '../components/Button';
 import DashboardCard from '../components/DashboardCard';
 import { maintenanceRecords, maintenanceTypes, maintenanceStatuses } from '../data/maintenance';
 import { useVehicles } from '../hooks/useVehicles';
-import { Wrench, Plus, CalendarClock, IndianRupee, User, CheckCircle, AlertCircle } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+import { Wrench, Plus, CalendarClock, IndianRupee, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function Maintenance() {
   const { vehicles } = useVehicles();
+  const { user } = useAuth();
+  const displayName = user?.name || 'Fleet Manager';
+  const displayRole = user?.role ? user.role.replace(/_/g, ' ') : 'Fleet Manager';
   const [records, setRecords] = useState(maintenanceRecords);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({
@@ -62,7 +66,7 @@ export default function Maintenance() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-100">
-      <Sidebar role="fleet" />
+      <Sidebar />
 
       <div className="flex-1 overflow-y-auto">
         {/* Top bar */}
@@ -82,11 +86,11 @@ export default function Maintenance() {
             </Button>
             <div className="flex items-center gap-2 pl-3 border-l border-slate-200">
               <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center">
-                <User size={14} className="text-white" />
+                <span className="text-white text-xs font-bold">{user?.avatar || 'FM'}</span>
               </div>
               <div className="hidden sm:block">
-                <p className="text-xs font-semibold text-slate-700">Rajan Verma</p>
-                <p className="text-xs text-slate-400">Fleet Manager</p>
+                <p className="text-xs font-semibold text-slate-700">{displayName}</p>
+                <p className="text-xs text-slate-400 capitalize">{displayRole}</p>
               </div>
             </div>
           </div>
