@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# ── Experiment 4: Environment files ──────────────────────────────────────────
+# Frontend env (contains VITE_API_URL — safe to keep locally but not in GitHub)
+.env
+# Backend env (contains MONGO_URI — NEVER commit this)
+backend/.env

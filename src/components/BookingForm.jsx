@@ -38,6 +38,8 @@ export default function BookingForm({ initialVehicleId, onFormChange }) {
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [lastBookingId, setLastBookingId] = useState('');
+  const [apiError, setApiError] = useState(''); // Experiment 4: error from backend
+  const [submitting, setSubmitting] = useState(false); // Experiment 4: loading state
 
   // Sync form name and email if user changes
   useEffect(() => {
@@ -73,23 +75,25 @@ export default function BookingForm({ initialVehicleId, onFormChange }) {
     if (onFormChange) onFormChange(updated);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) {
       setErrors(errs);
       return;
     }
-    
-    const selectedVeh = vehicles.find((v) => v.id === form.vehicleId);
+
+    setApiError('');
+    setSubmitting(true);
+
+    const selectedVeh = vehicles.find((v) => v.id === form.vehicleId || v._id === form.vehicleId);
     const diff = new Date(form.returnDate) - new Date(form.pickupDate);
     const days = Math.max(Math.ceil(diff / (1000 * 60 * 60 * 24)), 1);
     const pricePerDay = selectedVeh?.pricePerDay || 0;
     const totalAmount = (pricePerDay + 200) * days;
-    const bookingId = `BK-${Math.floor(Math.random() * 90000) + 10000}`;
 
-    addBooking({
-      id: bookingId,
+    // Experiment 4: addBooking now calls POST /api/bookings and returns {success, booking, error}
+    const result = await addBooking({
       customerId: user?.id || 'C001',
       customerName: form.name,
       customerEmail: form.email,
@@ -108,8 +112,16 @@ export default function BookingForm({ initialVehicleId, onFormChange }) {
       notes: form.notes,
     });
 
-    setLastBookingId(bookingId);
-    setSubmitted(true);
+    setSubmitting(false);
+
+    if (result && result.success) {
+      // Use the MongoDB _id as the booking reference
+      setLastBookingId(result.booking?.id || result.booking?._id || 'Confirmed');
+      setSubmitted(true);
+    } else {
+      // Show backend error (e.g. vehicle already booked)
+      setApiError(result?.error || 'Failed to confirm booking. Please try again.');
+    }
   };
 
   if (submitted) {
@@ -118,14 +130,18 @@ export default function BookingForm({ initialVehicleId, onFormChange }) {
         <p className="text-5xl mb-4">🎉</p>
         <h3 className="text-xl font-bold text-emerald-700">Booking Confirmed!</h3>
         <p className="text-slate-600 mt-2">
-          Your booking reference is{' '}
-          <span className="font-mono font-bold text-blue-600">
+          Your booking ID is{' '}
+          <span className="font-mono font-bold text-blue-600 text-xs break-all">
             {lastBookingId}
           </span>
-          . A confirmation has been sent to <strong>{form.email}</strong>.
+          {'. '}A confirmation has been sent to <strong>{form.email}</strong>.
+        </p>
+        {/* Experiment 4 badge — shows this booking was saved to MongoDB */}
+        <p className="mt-3 text-xs text-emerald-600 font-medium">
+          ✅ Booking saved to MongoDB via REST API
         </p>
         <button
-          onClick={() => { setSubmitted(false); setForm({ name: user?.name || '', email: user?.email || '', phone: '', vehicleId: initialVehicleId || '', pickupDate: '', returnDate: '', pickupLocation: '', notes: '' }); }}
+          onClick={() => { setSubmitted(false); setApiError(''); setForm({ name: user?.name || '', email: user?.email || '', phone: '', vehicleId: initialVehicleId || '', pickupDate: '', returnDate: '', pickupLocation: '', notes: '' }); }}
           className="mt-6 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors"
         >
           Make Another Booking
@@ -232,8 +248,15 @@ export default function BookingForm({ initialVehicleId, onFormChange }) {
         />
       </Field>
 
-      <Button type="submit" fullWidth size="lg">
-        Confirm Booking
+      {/* Experiment 4: Show API error from backend (e.g. vehicle already booked) */}
+      {apiError && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+          ⚠️ {apiError}
+        </div>
+      )}
+
+      <Button type="submit" fullWidth size="lg" disabled={submitting}>
+        {submitting ? 'Confirming...' : 'Confirm Booking'}
       </Button>
     </form>
   );

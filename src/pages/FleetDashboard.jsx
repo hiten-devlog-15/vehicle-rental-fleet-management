@@ -55,17 +55,15 @@ export default function FleetDashboard() {
     v.type.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Delete this vehicle from the fleet?')) {
-      removeVehicle(id);
+      await removeVehicle(id);
     }
   };
 
-  const handleAddVehicle = () => {
+  const handleAddVehicle = async () => {
     if (!newVehicle.name || !newVehicle.registrationNo) return;
-    const id = `v${Date.now()}`;
-    addVehicle({
-      id,
+    const result = await addVehicle({
       name: newVehicle.name,
       registrationNo: newVehicle.registrationNo,
       type: newVehicle.type || 'SUV',
@@ -83,8 +81,12 @@ export default function FleetDashboard() {
       description: 'Newly added fleet vehicle.',
       features: ['Air Conditioning', 'Power Steering'],
     });
-    setShowAddModal(false);
-    setNewVehicle({ name: '', registrationNo: '', type: '', fleetStatus: 'Available', pricePerDay: '' });
+    if (result && result.success) {
+      setShowAddModal(false);
+      setNewVehicle({ name: '', registrationNo: '', type: '', fleetStatus: 'Available', pricePerDay: '' });
+    } else {
+      alert('Failed to add vehicle: ' + (result?.error || 'Unknown error'));
+    }
   };
 
   const inputCls = 'w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white';
