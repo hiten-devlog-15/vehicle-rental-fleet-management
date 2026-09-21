@@ -1,146 +1,162 @@
-// controllers/bookingController.js — CRUD operations for bookings
-// Important: creating a booking checks vehicle availability and updates vehicle status.
-// Cancelling a booking sets the vehicle back to Available.
+// controllers/bookingController.js — Experiment 5 upgrade
+//
+// Changes from Experiment 4:
+//   1. Consistent { success, data } response format across all handlers
+//   2. Mass-assignment protection: explicitly lists allowed fields
+//   3. Errors forwarded to the centralized errorHandler via next(err)
+//   4. ObjectId validation now handled by validateObjectId middleware (not here)
+//
+// Business logic preserved from Experiment 4:
+//   - Create booking checks vehicle availability, sets vehicle → Booked
+//   - Cancel/Complete booking sets vehicle → Available
 
 const Booking = require('../models/Booking');
 const Vehicle = require('../models/Vehicle');
 
+// ── Allowed fields for booking creation (mass-assignment protection) ──────────
+// Explicitly list every field the client is allowed to supply.
+// Fields like _id, createdAt, updatedAt, vehicleName, vehicleType, pricePerDay are
+// set by the backend — the client cannot override them.
+const ALLOWED_BOOKING_FIELDS = [
+  'customerId', 'customerName', 'customerEmail', 'customerPhone',
+  'vehicleId', 'pickupDate', 'returnDate', 'days',
+  'totalAmount', 'pickupLocation', 'notes', 'status',
+];
+
+const ALLOWED_UPDATE_FIELDS = [
+  'customerName', 'customerEmail', 'customerPhone',
+  'pickupDate', 'returnDate', 'days',
+  'totalAmount', 'pickupLocation', 'notes',
+];
+
+/**
+ * pickFields — extracts only the allowed fields from an object.
+ * Prevents mass-assignment: clients cannot inject _id, vehicleName, pricePerDay, etc.
+ */
+const pickFields = (obj, allowedFields) => {
+  const result = {};
+  allowedFields.forEach((field) => {
+    if (obj[field] !== undefined) {
+      result[field] = obj[field];
+    }
+  });
+  return result;
+};
+
 // ── GET /api/bookings ─────────────────────────────────────────────────────────
 // Returns all bookings, populated with vehicle details
-const getAllBookings = async (req, res) => {
+const getAllBookings = async (req, res, next) => {
   try {
     const bookings = await Booking.find().populate('vehicleId', 'name type image status');
-    res.status(200).json(bookings);
+    res.status(200).json({ success: true, data: bookings });
   } catch (error) {
-    res.status(500).json({ message: 'Server error: could not fetch bookings', error: error.message });
+    next(error);
   }
 };
 
 // ── GET /api/bookings/:id ─────────────────────────────────────────────────────
 // Returns a single booking by its MongoDB _id
-const getBookingById = async (req, res) => {
+const getBookingById = async (req, res, next) => {
   try {
     const booking = await Booking.findById(req.params.id).populate('vehicleId', 'name type image');
     if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
+      return res.status(404).json({ success: false, message: 'Booking not found' });
     }
-    res.status(200).json(booking);
+    res.status(200).json({ success: true, data: booking });
   } catch (error) {
-    if (error.name === 'CastError') {
-      return res.status(400).json({ message: 'Invalid booking ID format' });
-    }
-    res.status(500).json({ message: 'Server error: could not fetch booking', error: error.message });
+    next(error);
   }
 };
 
 // ── POST /api/bookings ────────────────────────────────────────────────────────
-// Creates a new booking
-// Business rules:
+// Creates a new booking.
+// Business rules (from Experiment 4, preserved):
 //   1. Find the vehicle by ID
 //   2. Check that it is Available (not Booked or Maintenance)
-//   3. Create the booking
+//   3. Create the booking with server-controlled fields (vehicleName, pricePerDay, etc.)
 //   4. Update vehicle status → Booked, available → false
-const createBooking = async (req, res) => {
+//
+// express-validator createBookingRules already ran before this.
+// Mass-assignment protection: only ALLOWED_BOOKING_FIELDS are taken from req.body.
+// Backend sets vehicleName, vehicleType, pricePerDay, bookingDate — clients cannot fake these.
+const createBooking = async (req, res, next) => {
   try {
-    const {
-      customerId, customerName, customerEmail, vehicleId,
-      pickupDate, returnDate, days, totalAmount, pickupLocation,
-    } = req.body;
-
-    // Basic required field validation
-    if (!customerId || !customerName || !customerEmail || !vehicleId || !pickupDate || !returnDate || !pickupLocation) {
-      return res.status(400).json({
-        message: 'customerId, customerName, customerEmail, vehicleId, pickupDate, returnDate, and pickupLocation are required',
-      });
-    }
-
-    // Validate dates — returnDate must be after pickupDate
-    if (returnDate <= pickupDate) {
-      return res.status(400).json({ message: 'Return date must be after pickup date' });
-    }
+    // Extract only safe client-supplied fields
+    const clientData = pickFields(req.body, ALLOWED_BOOKING_FIELDS);
 
     // Find the vehicle
-    const vehicle = await Vehicle.findById(vehicleId);
+    const vehicle = await Vehicle.findById(clientData.vehicleId);
     if (!vehicle) {
-      return res.status(404).json({ message: 'Vehicle not found' });
+      return res.status(404).json({ success: false, message: 'Vehicle not found' });
     }
 
     // Check vehicle availability
     if (vehicle.status === 'Booked') {
-      return res.status(400).json({ message: `${vehicle.name} is already booked and not available` });
+      return res.status(400).json({
+        success: false,
+        message: `${vehicle.name} is already booked and not available`,
+      });
     }
     if (vehicle.status === 'Maintenance') {
-      return res.status(400).json({ message: `${vehicle.name} is under maintenance and cannot be booked` });
+      return res.status(400).json({
+        success: false,
+        message: `${vehicle.name} is under maintenance and cannot be booked`,
+      });
     }
 
-    // Create the booking
+    // Create the booking — server sets vehicleName, vehicleType, pricePerDay, bookingDate
+    // These are read from the database, NOT from req.body (prevents price manipulation)
     const booking = await Booking.create({
-      ...req.body,
-      vehicleName: vehicle.name,
-      vehicleType: vehicle.type,
-      pricePerDay: vehicle.pricePerDay,
+      ...clientData,
+      vehicleName: vehicle.name,          // server-set: client cannot override vehicle name
+      vehicleType: vehicle.type,          // server-set
+      pricePerDay: vehicle.pricePerDay,   // server-set: client cannot submit a fake price
       bookingDate: new Date().toISOString().split('T')[0],
     });
 
     // Update vehicle status to Booked
-    await Vehicle.findByIdAndUpdate(vehicleId, { status: 'Booked', available: false });
+    await Vehicle.findByIdAndUpdate(clientData.vehicleId, { status: 'Booked', available: false });
 
-    res.status(201).json(booking);
+    res.status(201).json({ success: true, data: booking });
   } catch (error) {
-    if (error.name === 'ValidationError') {
-      const messages = Object.values(error.errors).map((e) => e.message);
-      return res.status(400).json({ message: messages.join(', ') });
-    }
-    if (error.name === 'CastError') {
-      return res.status(400).json({ message: 'Invalid vehicle ID format' });
-    }
-    res.status(500).json({ message: 'Server error: could not create booking', error: error.message });
+    next(error);
   }
 };
 
 // ── PUT /api/bookings/:id ─────────────────────────────────────────────────────
-// Updates a booking's details
-const updateBooking = async (req, res) => {
+// Updates a booking's editable details (mass-assignment protected)
+const updateBooking = async (req, res, next) => {
   try {
+    const updateData = pickFields(req.body, ALLOWED_UPDATE_FIELDS);
+
     const booking = await Booking.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updateData,
       { new: true, runValidators: true }
     );
     if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
+      return res.status(404).json({ success: false, message: 'Booking not found' });
     }
-    res.status(200).json(booking);
+    res.status(200).json({ success: true, data: booking });
   } catch (error) {
-    if (error.name === 'ValidationError') {
-      const messages = Object.values(error.errors).map((e) => e.message);
-      return res.status(400).json({ message: messages.join(', ') });
-    }
-    if (error.name === 'CastError') {
-      return res.status(400).json({ message: 'Invalid booking ID format' });
-    }
-    res.status(500).json({ message: 'Server error: could not update booking', error: error.message });
+    next(error);
   }
 };
 
 // ── PATCH /api/bookings/:id/status ────────────────────────────────────────────
-// Updates booking status and adjusts vehicle availability accordingly
-// - Cancelled / Completed → vehicle becomes Available
-// - Confirmed / Active    → vehicle becomes Booked
-const updateBookingStatus = async (req, res) => {
+// Updates booking status and adjusts vehicle availability accordingly.
+// express-validator updateBookingStatusRules already validated status before this.
+//
+// Status transitions (Experiment 4 business logic preserved):
+//   Cancelled / Completed → vehicle becomes Available
+//   Confirmed / Active    → vehicle becomes Booked
+const updateBookingStatus = async (req, res, next) => {
   try {
     const { status } = req.body;
-    const validStatuses = ['Pending', 'Confirmed', 'Active', 'Completed', 'Cancelled'];
-
-    if (!status || !validStatuses.includes(status)) {
-      return res.status(400).json({
-        message: `Status must be one of: ${validStatuses.join(', ')}`,
-      });
-    }
 
     const booking = await Booking.findById(req.params.id);
     if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
+      return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
     // Update booking status
@@ -162,22 +178,19 @@ const updateBookingStatus = async (req, res) => {
       });
     }
 
-    res.status(200).json(booking);
+    res.status(200).json({ success: true, data: booking });
   } catch (error) {
-    if (error.name === 'CastError') {
-      return res.status(400).json({ message: 'Invalid booking ID format' });
-    }
-    res.status(500).json({ message: 'Server error: could not update status', error: error.message });
+    next(error);
   }
 };
 
 // ── DELETE /api/bookings/:id ──────────────────────────────────────────────────
-// Deletes a booking (and frees the vehicle if it was active)
-const deleteBooking = async (req, res) => {
+// Deletes a booking and frees the vehicle if it was active/confirmed
+const deleteBooking = async (req, res, next) => {
   try {
     const booking = await Booking.findById(req.params.id);
     if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
+      return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
     // Free the vehicle if the booking was active/confirmed
@@ -189,12 +202,9 @@ const deleteBooking = async (req, res) => {
     }
 
     await Booking.findByIdAndDelete(req.params.id);
-    res.status(200).json({ message: 'Booking deleted successfully' });
+    res.status(200).json({ success: true, message: 'Booking deleted successfully' });
   } catch (error) {
-    if (error.name === 'CastError') {
-      return res.status(400).json({ message: 'Invalid booking ID format' });
-    }
-    res.status(500).json({ message: 'Server error: could not delete booking', error: error.message });
+    next(error);
   }
 };
 

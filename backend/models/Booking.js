@@ -1,4 +1,5 @@
 // models/Booking.js — Mongoose schema for DriveFleet bookings
+// Experiment 5 additions: email regex validation at schema level.
 // Fields match the existing frontend booking data structure exactly.
 
 const mongoose = require('mongoose');
@@ -15,12 +16,20 @@ const bookingSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Customer name is required'],
       trim: true,
+      minlength: [2, 'Customer name must be at least 2 characters'],
+      maxlength: [100, 'Customer name cannot exceed 100 characters'],
     },
     customerEmail: {
       type: String,
       required: [true, 'Customer email is required'],
       trim: true,
       lowercase: true,
+      // Schema-level email format validation using regex
+      // This ensures even if data bypasses express-validator, Mongoose will still reject invalid emails
+      match: [
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+        'Please provide a valid email address',
+      ],
     },
     customerPhone: {
       type: String,
@@ -63,6 +72,7 @@ const bookingSchema = new mongoose.Schema(
     // Pricing
     pricePerDay: {
       type: Number,
+      min: [0, 'Price per day cannot be negative'],
       default: 0,
     },
     totalAmount: {
@@ -80,6 +90,7 @@ const bookingSchema = new mongoose.Schema(
     notes: {
       type: String,
       default: '',
+      maxlength: [500, 'Notes cannot exceed 500 characters'],
     },
 
     // Booking status

@@ -1,7 +1,9 @@
-// src/services/api.js — API Service Layer for DriveFleet (Experiment 4)
+// src/services/api.js — API Service Layer for DriveFleet (Experiment 5)
 //
-// This file centralises all HTTP calls to the Express backend.
-// React Context files import these functions — components never call fetch() directly.
+// Experiment 5 change:
+//   The backend now returns { success: true, data: ... } for all successful responses.
+//   The request() helper now unwraps the 'data' field transparently, so all callers
+//   (VehicleContext, BookingContext, components) continue to work with no changes.
 //
 // Architecture:
 //   React Component → useVehicles() / useBookings() → Context → api.js → Express → MongoDB
@@ -9,21 +11,39 @@
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // ── Helper: generic fetch wrapper ─────────────────────────────────────────────
-// Handles response parsing and throws errors for non-OK responses.
+// Handles response parsing, unwraps { success, data } envelope from Experiment 5 backend,
+// and throws errors for non-OK responses with meaningful messages.
 async function request(path, options = {}) {
   const response = await fetch(`${BASE_URL}${path}`, {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   });
 
-  const data = await response.json();
+  const json = await response.json();
 
   if (!response.ok) {
-    // Throw the backend's error message if available
-    throw new Error(data.message || `Request failed with status ${response.status}`);
+    // Build a helpful error message from the backend response
+    // Experiment 5 backend sends: { success: false, message: "...", errors: [...] }
+    let errorMessage = json.message || `Request failed with status ${response.status}`;
+
+    // If there are validation errors, append the first field-specific message
+    if (json.errors && json.errors.length > 0) {
+      const fieldErrors = json.errors.map((e) => `${e.field}: ${e.message}`).join('; ');
+      errorMessage = `${errorMessage} — ${fieldErrors}`;
+    }
+
+    throw new Error(errorMessage);
   }
 
-  return data;
+  // Experiment 5: backend wraps success responses as { success: true, data: ... }
+  // Unwrap so callers receive the data directly (backward compatible with all contexts)
+  if (json && json.success === true && json.data !== undefined) {
+    return json.data;
+  }
+
+  // For responses without a data wrapper (e.g., { success: true, message: "deleted" })
+  // return the full json so callers can read .message if needed
+  return json;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -102,3 +122,25 @@ export const updateBookingStatus = (id, status) =>
 /** DELETE /api/bookings/:id — delete a booking */
 export const deleteBooking = (id) =>
   request(`/bookings/${id}`, { method: 'DELETE' });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// USER & AUTH API FUNCTIONS (Experiment 5 Extension: MongoDB Atlas Users)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** POST /api/auth/register — register a new user in MongoDB Atlas */
+export const registerUser = (userData) =>
+  request('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(userData),
+  });
+
+/** POST /api/auth/login — authenticate user against MongoDB Atlas */
+export const loginUser = (credentials) =>
+  request('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(credentials),
+  });
+
+/** GET /api/auth/users — fetch all registered users from MongoDB Atlas */
+export const getUsers = () => request('/auth/users');
+

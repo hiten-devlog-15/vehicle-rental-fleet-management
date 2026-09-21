@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Eye, EyeOff, Car, User, Mail, Phone, Lock, Shield } from 'lucide-react';
+import { registerUser } from '../services/api';
 
 const inputCls =
   'w-full pl-10 pr-4 py-3 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder-slate-400 bg-white';
@@ -14,13 +15,15 @@ export default function Register() {
   const [errors, setErrors] = useState({});
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [serverError, setServerError] = useState('');
+  const [submitted, setSubmitted] = useState(false);
 
   // useEffect — document title (Experiment 2)
   useEffect(() => {
     document.title = 'DriveFleet | Register';
     return () => { document.title = 'DriveFleet'; };
   }, []);
-  const [submitted, setSubmitted] = useState(false);
 
   const validate = () => {
     const e = {};
@@ -39,13 +42,30 @@ export default function Register() {
   const update = (field) => (e) => {
     setForm({ ...form, [field]: e.target.value });
     setErrors({ ...errors, [field]: undefined });
+    setServerError('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setServerError('');
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
-    setSubmitted(true);
+
+    setLoading(true);
+    try {
+      await registerUser({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        phone: form.phone,
+        role: form.role,
+      });
+      setLoading(false);
+      setSubmitted(true);
+    } catch (err) {
+      setLoading(false);
+      setServerError(err.message || 'Failed to create account. Please try again.');
+    }
   };
 
   if (submitted) {
@@ -123,6 +143,13 @@ export default function Register() {
               Already have an account?{' '}
               <Link to="/login" className="text-blue-600 font-semibold hover:text-blue-700">Sign in</Link>
             </p>
+
+            {/* Backend / API error banner */}
+            {serverError && (
+              <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
+                {serverError}
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} noValidate className="space-y-4">
               {/* Name */}
@@ -223,9 +250,20 @@ export default function Register() {
               <button
                 id="reg-submit-btn"
                 type="submit"
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-sm rounded-xl transition-all shadow-md hover:shadow-blue-200 mt-2"
+                disabled={loading}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold text-sm rounded-xl transition-all shadow-md hover:shadow-blue-200 mt-2"
               >
-                Create Account
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Creating Account...
+                  </span>
+                ) : (
+                  'Create Account'
+                )}
               </button>
             </form>
           </div>
