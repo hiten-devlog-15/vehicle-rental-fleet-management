@@ -50,6 +50,17 @@ const errorHandler = (err, req, res, _next) => {
     message = `A record with this ${field} already exists`;
   }
 
+  // ── JWT Authentication Errors ────────────────────────────────────────────────
+  if (err.name === 'JsonWebTokenError') {
+    statusCode = 401;
+    message = 'Invalid authentication token';
+  }
+
+  if (err.name === 'TokenExpiredError') {
+    statusCode = 401;
+    message = 'Authentication token expired';
+  }
+
   // ── Log the error for developers (server console only, not in API response) ──
   // Only log the full stack in development mode — never expose stacks in production
   if (process.env.NODE_ENV === 'development') {

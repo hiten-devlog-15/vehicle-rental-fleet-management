@@ -19,8 +19,13 @@ export default function CustomerDashboard() {
   const { vehicles } = useVehicles();
 
   const customerId = user?.id || 'C001';
-  // Support both C001 (mock data) and U001 (logged-in customer) so mock bookings show up.
-  const customerBookings = bookings.filter((b) => b.customerId === customerId || (customerId === 'U001' && b.customerId === 'C001'));
+  // Support customer ID, email match, or legacy mock IDs (C001 / U001)
+  const customerBookings = bookings.filter(
+    (b) =>
+      b.customerId === customerId ||
+      (user?.email && b.customerEmail && b.customerEmail.toLowerCase() === user.email.toLowerCase()) ||
+      (customerId === 'U001' && b.customerId === 'C001')
+  );
   const activeBooking = customerBookings.find((b) => b.status === 'Active');
   const activeVehicle = activeBooking ? vehicles.find((v) => v.id === activeBooking.vehicleId) : null;
 

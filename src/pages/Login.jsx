@@ -52,16 +52,15 @@ export default function Login() {
     return e;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setAuthError('');
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
 
     setLoading(true);
-    // Simulate async login (mock delay)
-    setTimeout(() => {
-      const result = login(form.email, form.password);
+    try {
+      const result = await login(form.email, form.password, form.remember);
       setLoading(false);
 
       if (!result.success) {
@@ -69,13 +68,17 @@ export default function Login() {
         return;
       }
 
-      // Navigate based on role
-      if (result.user.role === 'fleet_manager' || result.user.role === 'admin') {
+      // Navigate based on user role
+      const userRole = result.user?.role;
+      if (userRole === 'fleet_manager' || userRole === 'admin' || userRole === 'manager') {
         navigate('/fleet-dashboard');
       } else {
         navigate('/customer-dashboard');
       }
-    }, 800);
+    } catch (err) {
+      setLoading(false);
+      setAuthError(err.message || 'Login failed. Please check your credentials.');
+    }
   };
 
   // Quick-fill a demo credential

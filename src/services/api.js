@@ -1,32 +1,46 @@
-// src/services/api.js — API Service Layer for DriveFleet (Experiment 5)
+// src/services/api.js — API Service Layer for DriveFleet (Experiment 5 & Real JWT Auth)
 //
-// Experiment 5 change:
-//   The backend now returns { success: true, data: ... } for all successful responses.
-//   The request() helper now unwraps the 'data' field transparently, so all callers
-//   (VehicleContext, BookingContext, components) continue to work with no changes.
-//
-// Architecture:
-//   React Component → useVehicles() / useBookings() → Context → api.js → Express → MongoDB
+// Features:
+//   - Handles API requests with automatic Authorization header (JWT Bearer token)
+//   - Unwraps backend responses transparently for backward compatibility
+//   - Exports helper functions for Vehicles, Bookings, User Auth, and Session Management
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+// ── Token Storage Helpers ─────────────────────────────────────────────────────
+export const getToken = () => localStorage.getItem('drivefleet_token') || sessionStorage.getItem('drivefleet_token');
+export const setToken = (token, remember = true) => {
+  if (remember) {
+    localStorage.setItem('drivefleet_token', token);
+  } else {
+    sessionStorage.setItem('drivefleet_token', token);
+  }
+};
+export const removeToken = () => {
+  localStorage.removeItem('drivefleet_token');
+  sessionStorage.removeItem('drivefleet_token');
+};
+
 // ── Helper: generic fetch wrapper ─────────────────────────────────────────────
-// Handles response parsing, unwraps { success, data } envelope from Experiment 5 backend,
-// and throws errors for non-OK responses with meaningful messages.
 async function request(path, options = {}) {
+  const token = getToken();
+
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(options.headers || {}),
+  };
+
   const response = await fetch(`${BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
     ...options,
+    headers,
   });
 
   const json = await response.json();
 
   if (!response.ok) {
-    // Build a helpful error message from the backend response
-    // Experiment 5 backend sends: { success: false, message: "...", errors: [...] }
     let errorMessage = json.message || `Request failed with status ${response.status}`;
 
-    // If there are validation errors, append the first field-specific message
     if (json.errors && json.errors.length > 0) {
       const fieldErrors = json.errors.map((e) => `${e.field}: ${e.message}`).join('; ');
       errorMessage = `${errorMessage} — ${fieldErrors}`;
@@ -35,14 +49,16 @@ async function request(path, options = {}) {
     throw new Error(errorMessage);
   }
 
-  // Experiment 5: backend wraps success responses as { success: true, data: ... }
-  // Unwrap so callers receive the data directly (backward compatible with all contexts)
+  // If response has a token field (e.g. login/register), return full JSON
+  if (json && json.token) {
+    return json;
+  }
+
+  // Unwrap backend standard responses: { success: true, data: ... }
   if (json && json.success === true && json.data !== undefined) {
     return json.data;
   }
 
-  // For responses without a data wrapper (e.g., { success: true, message: "deleted" })
-  // return the full json so callers can read .message if needed
   return json;
 }
 
@@ -98,7 +114,7 @@ export const getBookings = () => request('/bookings');
 /** GET /api/bookings/:id — fetch one booking */
 export const getBookingById = (id) => request(`/bookings/${id}`);
 
-/** POST /api/bookings — create a new booking (also updates vehicle status) */
+/** POST /api/bookings — create a new booking */
 export const createBooking = (bookingData) =>
   request('/bookings', {
     method: 'POST',
@@ -112,7 +128,7 @@ export const updateBooking = (id, bookingData) =>
     body: JSON.stringify(bookingData),
   });
 
-/** PATCH /api/bookings/:id/status — update booking status (cancel, confirm, etc.) */
+/** PATCH /api/bookings/:id/status — update booking status */
 export const updateBookingStatus = (id, status) =>
   request(`/bookings/${id}/status`, {
     method: 'PATCH',
@@ -124,7 +140,7 @@ export const deleteBooking = (id) =>
   request(`/bookings/${id}`, { method: 'DELETE' });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// USER & AUTH API FUNCTIONS (Experiment 5 Extension: MongoDB Atlas Users)
+// USER & AUTH API FUNCTIONS (Real JWT Authentication)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /** POST /api/auth/register — register a new user in MongoDB Atlas */
@@ -141,6 +157,8 @@ export const loginUser = (credentials) =>
     body: JSON.stringify(credentials),
   });
 
+/** GET /api/auth/me — fetch authenticated user profile using stored JWT token */
+export const getMe = () => request('/auth/me');
+
 /** GET /api/auth/users — fetch all registered users from MongoDB Atlas */
 export const getUsers = () => request('/auth/users');
-

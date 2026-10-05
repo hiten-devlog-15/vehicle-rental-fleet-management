@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Eye, EyeOff, Car, User, Mail, Phone, Lock, Shield } from 'lucide-react';
-import { registerUser } from '../services/api';
+import { useAuth } from '../hooks/useAuth';
 
 const inputCls =
   'w-full pl-10 pr-4 py-3 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder-slate-400 bg-white';
@@ -18,6 +18,8 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState('');
   const [submitted, setSubmitted] = useState(false);
+
+  const { register } = useAuth();
 
   // useEffect — document title (Experiment 2)
   useEffect(() => {
@@ -53,7 +55,7 @@ export default function Register() {
 
     setLoading(true);
     try {
-      await registerUser({
+      const result = await register({
         name: form.name,
         email: form.email,
         password: form.password,
@@ -61,6 +63,12 @@ export default function Register() {
         role: form.role,
       });
       setLoading(false);
+
+      if (!result.success) {
+        setServerError(result.error);
+        return;
+      }
+
       setSubmitted(true);
     } catch (err) {
       setLoading(false);

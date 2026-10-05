@@ -4,11 +4,38 @@
 //   1. Register: Creates a new user document in MongoDB Atlas users collection
 //      - Enforces email uniqueness check
 //      - Password is automatically hashed via Mongoose pre('save') hook in User.js using bcryptjs
-//      - Password hash is omitted from API response automatically (select: false + toJSON transform)
+//      - Generates and returns a JWT token signed with JWT_SECRET
+//      - Password hash is omitted from API response automatically
 //   2. Login: Verifies user credentials using comparePassword() instance method (bcryptjs compare)
-//   3. Get Users: Fetches all registered users for administration/dashboard view
+//      - Generates and returns a JWT token containing user ID and role
+//   3. Get Current User (me): Returns profile of authenticated user
+//   4. Get Users: Fetches all registered users for administration/dashboard view
 
+const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+
+/**
+ * Helper: Generate JWT for user
+ */
+const generateToken = (user) => {
+  return jwt.sign(
+    { id: user._id.toString(), role: user.role, email: user.email },
+    process.env.JWT_SECRET || 'drivefleet_super_secret_jwt_key_2026_college_project',
+    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+  );
+};
+
+/**
+ * Helper: Map raw role string to standard DriveFleet roles
+ */
+const mapRole = (role) => {
+  if (!role) return 'customer';
+  const normalized = role.toString().trim().toLowerCase();
+  if (normalized === 'fleet' || normalized === 'fleet_manager') return 'fleet_manager';
+  if (normalized === 'admin') return 'admin';
+  if (normalized === 'manager') return 'manager';
+  return 'customer';
+};
 
 /**
  * @desc    Register a new user
@@ -28,8 +55,8 @@ const register = async (req, res, next) => {
       });
     }
 
-    // 2. Normalize role (default to 'customer' unless explicitly allowed)
-    const userRole = role === 'manager' || role === 'fleet' ? 'customer' : (role || 'customer');
+    // 2. Map role appropriately
+    const userRole = mapRole(role);
 
     // 3. Create user — Mongoose pre('save') hook in User.js automatically hashes password with bcryptjs
     const user = await User.create({
@@ -40,11 +67,25 @@ const register = async (req, res, next) => {
       role: userRole,
     });
 
-    // 4. Return success response (toJSON transform automatically strips password)
+    // 4. Generate JWT token
+    const token = generateToken(user);
+
+    const safeUser = {
+      id: user._id.toString(),
+      _id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone || '',
+    };
+
+    // 5. Return success response (never exposing password)
     res.status(201).json({
       success: true,
-      message: 'Account created successfully! User registered in MongoDB Atlas.',
-      data: user,
+      message: 'User registered successfully',
+      token,
+      user: safeUser,
+      data: safeUser,
     });
   } catch (error) {
     next(error);
@@ -86,11 +127,57 @@ const login = async (req, res, next) => {
       });
     }
 
-    // 3. Return user data (password is omitted via toJSON)
+    // 3. Generate JWT token
+    const token = generateToken(user);
+
+    const safeUser = {
+      id: user._id.toString(),
+      _id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone || '',
+    };
+
+    // 4. Return token and safe user data
     res.status(200).json({
       success: true,
       message: 'Login successful.',
-      data: user,
+      token,
+      user: safeUser,
+      data: safeUser,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get current authenticated user profile
+ * @route   GET /api/auth/me
+ * @access  Private
+ */
+const getMe = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+    const safeUser = {
+      id: user._id.toString(),
+      _id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone || '',
+    };
+    res.status(200).json({
+      success: true,
+      user: safeUser,
+      data: safeUser,
     });
   } catch (error) {
     next(error);
@@ -100,7 +187,7 @@ const login = async (req, res, next) => {
 /**
  * @desc    Get all registered users
  * @route   GET /api/auth/users
- * @access  Public (admin/view)
+ * @access  Public/Admin
  */
 const getUsers = async (req, res, next) => {
   try {
@@ -118,5 +205,6 @@ const getUsers = async (req, res, next) => {
 module.exports = {
   register,
   login,
+  getMe,
   getUsers,
 };

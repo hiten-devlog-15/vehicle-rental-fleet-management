@@ -135,9 +135,14 @@ export function BookingProvider({ children }) {
     }
   }, [bookings, setVehicleState]);
 
-  /** getCustomerBookings — returns bookings filtered by customerId */
-  const getCustomerBookings = useCallback((customerId) => {
-    return bookings.filter((b) => b.customerId === customerId);
+  /** getCustomerBookings — returns bookings filtered by customerId or customer email */
+  const getCustomerBookings = useCallback((customerId, userEmail) => {
+    if (!customerId && !userEmail) return bookings;
+    return bookings.filter(
+      (b) =>
+        (customerId && b.customerId === customerId) ||
+        (userEmail && b.customerEmail && b.customerEmail.toLowerCase() === userEmail.toLowerCase())
+    );
   }, [bookings]);
 
   /** getBookingById — retrieves a booking by its ID */
