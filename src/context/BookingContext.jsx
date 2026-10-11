@@ -11,6 +11,7 @@
 import { createContext, useState, useContext, useCallback, useEffect } from 'react';
 import { VehicleContext } from './VehicleContext';
 import * as api from '../services/api';
+import { useSocket } from '../hooks/useSocket';
 
 export const BookingContext = createContext(null);
 
@@ -19,6 +20,88 @@ export function BookingProvider({ children }) {
   const [bookingLoading, setBookingLoading] = useState(true);
   const [bookingError, setBookingError] = useState(null);
   const vehicleCtx = useContext(VehicleContext);
+
+  // Experiment 8: Real-time Socket.IO connection
+  const { socket, isConnected } = useSocket();
+
+  // Helper to update vehicle status/availability in VehicleContext if available
+  const setVehicleState = useCallback((vehicleId, available, status) => {
+    if (vehicleCtx) {
+      vehicleCtx.updateVehicleStatus(vehicleId, status);
+      vehicleCtx.updateVehicleAvailability(vehicleId, available);
+    }
+  }, [vehicleCtx]);
+
+  // ── Experiment 8: Real-Time WebSockets Synchronization ─────────────────────
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleBookingCreated = (newBooking) => {
+      const normalized = {
+        ...newBooking,
+        id: newBooking._id || newBooking.id,
+        vehicleId: newBooking.vehicleId?._id || newBooking.vehicleId,
+      };
+
+      setBookings((prev) => {
+        // Prevent duplicate entries
+        if (prev.some((b) => b.id === normalized.id || b._id === normalized.id)) {
+          return prev;
+        }
+        return [normalized, ...prev];
+      });
+
+      // Synchronize associated vehicle status in VehicleContext
+      if (normalized.vehicleId) {
+        setVehicleState(normalized.vehicleId, false, 'Booked');
+      }
+    };
+
+    const handleBookingStatusUpdated = (updatedBooking) => {
+      const id = updatedBooking._id || updatedBooking.id;
+      setBookings((prev) =>
+        prev.map((b) => (b.id === id || b._id === id ? { ...b, ...updatedBooking, id } : b))
+      );
+
+      // Free or occupy vehicle based on status
+      if (updatedBooking.vehicleId) {
+        const vehicleId = updatedBooking.vehicleId?._id || updatedBooking.vehicleId;
+        if (updatedBooking.status === 'Cancelled' || updatedBooking.status === 'Completed') {
+          setVehicleState(vehicleId, true, 'Available');
+        } else if (updatedBooking.status === 'Confirmed' || updatedBooking.status === 'Active') {
+          setVehicleState(vehicleId, false, 'Booked');
+        }
+      }
+    };
+
+    socket.on('bookingCreated', handleBookingCreated);
+    socket.on('bookingStatusUpdated', handleBookingStatusUpdated);
+
+    return () => {
+      socket.off('bookingCreated', handleBookingCreated);
+      socket.off('bookingStatusUpdated', handleBookingStatusUpdated);
+    };
+  }, [socket, setVehicleState]);
+
+  // Re-sync with REST API whenever socket reconnects
+  useEffect(() => {
+    if (isConnected) {
+      api.getBookings()
+        .then((data) => {
+          if (Array.isArray(data)) {
+            const normalized = data.map((b) => ({
+              ...b,
+              id: b._id,
+              vehicleId: b.vehicleId?._id || b.vehicleId,
+            }));
+            setBookings(normalized);
+          }
+        })
+        .catch((err) => {
+          console.warn('Booking sync failed on reconnect:', err.message);
+        });
+    }
+  }, [isConnected]);
 
   // ── Experiment 4: Load bookings from MongoDB on mount ─────────────────────
   useEffect(() => {
@@ -47,15 +130,6 @@ export function BookingProvider({ children }) {
 
     loadBookings();
   }, []);
-
-  // Helper to update vehicle status/availability in VehicleContext if available
-  const setVehicleState = useCallback((vehicleId, available, status) => {
-    if (vehicleCtx) {
-      vehicleCtx.updateVehicleStatus(vehicleId, status);
-      // updateVehicleStatus already syncs available, but also call availability for safety
-      vehicleCtx.updateVehicleAvailability(vehicleId, available);
-    }
-  }, [vehicleCtx]);
 
   /**
    * addBooking — creates a new booking via POST /api/bookings

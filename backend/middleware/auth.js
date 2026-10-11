@@ -1,9 +1,10 @@
-// middleware/auth.js — JWT Authentication & Authorization Middleware
+// middleware/auth.js — JWT Authentication & Authorization Middleware (Experiment 6)
 //
 // 1. protect: Verifies the JWT sent in the Authorization header (Bearer <token>)
 //    - Extracts user ID and role from payload
-//    - Attaches decoded user info to req.user
-//    - Rejects missing, malformed, or expired tokens with 401 status code
+//    - Reloads the user from MongoDB to ensure the account still exists
+//    - Attaches decoded user info to req.user for downstream handlers
+//    - Rejects missing, malformed, or expired tokens with 401
 // 2. authorize: Restricts access to specific roles (e.g. authorize('fleet_manager', 'admin'))
 
 const jwt = require('jsonwebtoken');
@@ -32,8 +33,17 @@ const protect = async (req, res, next) => {
   }
 
   try {
-    // Verify token using JWT_SECRET from environment variables
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_jwt_secret');
+    // Guard: JWT_SECRET must be configured — the authController startup check should catch this first,
+    // but we add a safety net here too to protect against misconfiguration.
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({
+        success: false,
+        message: 'Server configuration error: JWT_SECRET is not set.',
+      });
+    }
+
+    // Verify token signature and expiration using the same secret used to sign it
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // Optionally load latest user details from database (excluding password)
     const user = await User.findById(decoded.id).select('-password');

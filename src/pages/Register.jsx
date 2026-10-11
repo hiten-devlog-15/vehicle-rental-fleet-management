@@ -55,12 +55,15 @@ export default function Register() {
 
     setLoading(true);
     try {
+      // Note: 'role' is intentionally NOT sent to the backend.
+      // The backend always assigns 'customer' for public registration
+      // regardless of any role value submitted by the client.
       const result = await register({
         name: form.name,
         email: form.email,
         password: form.password,
         phone: form.phone,
-        role: form.role,
+        // role is omitted — backend enforces customer role for public registration
       });
       setLoading(false);
 

@@ -1,50 +1,55 @@
 // controllers/authController.js — Authentication & User Management Controller
 //
+// Experiment 6: JWT Authentication & Role-Based Authorization
+//
 // Features:
-//   1. Register: Creates a new user document in MongoDB Atlas users collection
-//      - Enforces email uniqueness check
-//      - Password is automatically hashed via Mongoose pre('save') hook in User.js using bcryptjs
-//      - Generates and returns a JWT token signed with JWT_SECRET
-//      - Password hash is omitted from API response automatically
-//   2. Login: Verifies user credentials using comparePassword() instance method (bcryptjs compare)
-//      - Generates and returns a JWT token containing user ID and role
-//   3. Get Current User (me): Returns profile of authenticated user
-//   4. Get Users: Fetches all registered users for administration/dashboard view
+//   1. Register: Creates a new user in MongoDB Atlas
+//      - Always assigns role = "customer" — client cannot override this
+//      - Password hashed automatically via Mongoose pre('save') hook (bcryptjs)
+//      - Generates and returns a JWT signed with JWT_SECRET environment variable
+//      - Password hash is never returned in API responses
+//   2. Login: Verifies credentials using bcryptjs comparePassword()
+//      - Generates JWT containing user ID and role
+//   3. Get Current User (me): Returns profile for the authenticated user
+//   4. Get Users: Admin/manager endpoint — returns all registered users
 
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+// ── JWT Secret Guard ──────────────────────────────────────────────────────────
+// Fail loudly at startup if the JWT_SECRET environment variable is missing.
+// This prevents the server from silently using a weak or predictable secret.
+if (!process.env.JWT_SECRET) {
+  console.error('[FATAL] JWT_SECRET environment variable is not set. Please add it to backend/.env');
+  process.exit(1);
+}
+
 /**
- * Helper: Generate JWT for user
+ * Helper: Generate a signed JWT for a user.
+ * Payload includes user ID, role, and email.
+ * Expiry is controlled by JWT_EXPIRES_IN (default: 7d).
  */
 const generateToken = (user) => {
   return jwt.sign(
     { id: user._id.toString(), role: user.role, email: user.email },
-    process.env.JWT_SECRET || 'drivefleet_super_secret_jwt_key_2026_college_project',
+    process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
-};
-
-/**
- * Helper: Map raw role string to standard DriveFleet roles
- */
-const mapRole = (role) => {
-  if (!role) return 'customer';
-  const normalized = role.toString().trim().toLowerCase();
-  if (normalized === 'fleet' || normalized === 'fleet_manager') return 'fleet_manager';
-  if (normalized === 'admin') return 'admin';
-  if (normalized === 'manager') return 'manager';
-  return 'customer';
 };
 
 /**
  * @desc    Register a new user
  * @route   POST /api/auth/register
  * @access  Public
+ *
+ * Security: role is ALWAYS forced to 'customer' here regardless of what the
+ * client submits. Privileged roles (fleet_manager, admin) can only be assigned
+ * through a trusted backend/database operation — never through this endpoint.
  */
 const register = async (req, res, next) => {
   try {
-    const { name, email, password, phone, role } = req.body;
+    const { name, email, password, phone } = req.body;
+    // Intentionally ignore any 'role' field from the request body.
 
     // 1. Check if user already exists with this email
     const existingUser = await User.findOne({ email: email.toLowerCase() });
@@ -55,16 +60,14 @@ const register = async (req, res, next) => {
       });
     }
 
-    // 2. Map role appropriately
-    const userRole = mapRole(role);
-
-    // 3. Create user — Mongoose pre('save') hook in User.js automatically hashes password with bcryptjs
+    // 2. Create user — role is ALWAYS 'customer' for public registration
+    //    Mongoose pre('save') hook in User.js automatically hashes password with bcryptjs
     const user = await User.create({
       name: name.trim(),
       email: email.trim().toLowerCase(),
       password,
       phone: phone ? phone.trim() : '',
-      role: userRole,
+      role: 'customer', // Never trusts role from the client
     });
 
     // 4. Generate JWT token

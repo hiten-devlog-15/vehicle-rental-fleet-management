@@ -9,9 +9,10 @@ import Button from '../components/Button';
 import { useAuth } from '../hooks/useAuth';
 import { useVehicles } from '../hooks/useVehicles';
 import { useBookings } from '../hooks/useBookings';
+import { useSocket } from '../hooks/useSocket';
 import {
   Car, CheckCircle, Wrench, PauseCircle,
-  Plus, Pencil, Trash2, Eye, Bell, User, Search, LogIn, Calendar,
+  Plus, Pencil, Trash2, Eye, Bell, User, Search, LogIn, Calendar, Activity,
 } from 'lucide-react';
 
 export default function FleetDashboard() {
@@ -22,7 +23,8 @@ export default function FleetDashboard() {
     updateVehicle,
     updateVehicleStatus,
   } = useVehicles();
-  const { bookings } = useBookings();
+  const { bookings, updateBookingStatus } = useBookings();
+  const { isConnected } = useSocket();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -112,6 +114,14 @@ export default function FleetDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            {/* Real-time WebSocket connection indicator (Experiment 8) */}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-slate-200 bg-white shadow-xs">
+              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
+              <span className="text-slate-600 font-semibold hidden md:inline">
+                {isConnected ? 'Real-Time Connected' : 'Disconnected'}
+              </span>
+            </div>
+
             <Button
               id="fleet-add-vehicle-btn"
               onClick={() => setShowAddModal(true)}
@@ -171,6 +181,67 @@ export default function FleetDashboard() {
           {/* Stats */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {stats.map((s) => <DashboardCard key={s.title} {...s} />)}
+          </div>
+
+          {/* Real-Time Live Bookings Table (Experiment 8) */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+                <h2 className="font-bold text-slate-800">Live Customer Reservations</h2>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold border border-blue-100">
+                  {bookings.length} Total
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 hidden sm:block">Updates live via WebSockets</p>
+            </div>
+
+            {bookings.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 text-sm">
+                No bookings recorded yet. New customer reservations will appear here in real time.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      {['Booking ID', 'Customer', 'Vehicle', 'Dates', 'Total', 'Status', 'Change Status'].map((h) => (
+                        <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {bookings.slice(0, 8).map((b) => (
+                      <tr key={b.id || b._id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-5 py-3 font-mono text-xs text-blue-600 font-semibold">{b.id || b._id}</td>
+                        <td className="px-5 py-3">
+                          <p className="font-medium text-slate-800">{b.customerName}</p>
+                          <p className="text-xs text-slate-400">{b.customerEmail}</p>
+                        </td>
+                        <td className="px-5 py-3 font-medium text-slate-700">{b.vehicleName}</td>
+                        <td className="px-5 py-3 text-xs text-slate-500 whitespace-nowrap">{b.pickupDate} → {b.returnDate}</td>
+                        <td className="px-5 py-3 font-semibold text-slate-700">₹{(b.totalAmount || 0).toLocaleString()}</td>
+                        <td className="px-5 py-3"><StatusBadge status={b.status} /></td>
+                        <td className="px-5 py-3">
+                          <select
+                            value={b.status}
+                            onChange={(e) => updateBookingStatus(b.id || b._id, e.target.value)}
+                            className="text-xs border border-slate-300 rounded-lg px-2 py-1 bg-white hover:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                          >
+                            <option value="Confirmed">Confirmed</option>
+                            <option value="Active">Active</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Cancelled">Cancelled</option>
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           {/* Vehicle management table */}

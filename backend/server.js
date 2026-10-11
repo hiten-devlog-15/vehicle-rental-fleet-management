@@ -1,15 +1,23 @@
-// server.js — DriveFleet Express Server (Experiment 5)
+// server.js — DriveFleet Express Server (Experiment 6)
 //
-// Experiment 5 upgrades over Experiment 4:
-//   1. Helmet          — adds secure HTTP response headers automatically
-//   2. CORS            — origin controlled via FRONTEND_URL environment variable
-//   3. Rate limiting   — apiLimiter applied to all /api/* routes
-//   4. Body limit      — express.json limited to 10kb to block oversized payloads
-//   5. Health endpoint — GET /api/health for easy server status check
-//   6. 404 handler     — returns JSON (not HTML) for unknown API routes
-//   7. Error handler   — centralized error middleware (must be last)
+// Experiment 6 adds over Experiment 5:
+//   1. JWT authentication (protect middleware) applied to booking and vehicle write routes
+//   2. Role-based authorization (authorize middleware) for manager-only operations
+//   3. Customer booking ownership enforcement in bookingController
+//   4. /api/auth/users protected to manager/admin roles only
+//   5. Hard fail on startup if JWT_SECRET environment variable is missing
+//
+// Experiment 5 security features (all preserved):
+//   1. Helmet          — secure HTTP response headers
+//   2. CORS            — origin controlled via FRONTEND_URL
+//   3. Rate limiting   — apiLimiter on all /api/* routes
+//   4. Body limit      — 10kb max payload
+//   5. Health endpoint — GET /api/health
+//   6. 404 handler     — JSON for unknown routes
+//   7. Error handler   — centralized error middleware
 
 const express = require('express');
+const http = require('http');
 const cors = require('cors');
 const helmet = require('helmet');
 require('dotenv').config();
@@ -20,6 +28,7 @@ const bookingRoutes = require('./routes/bookingRoutes');
 const authRoutes = require('./routes/authRoutes');
 const { apiLimiter } = require('./middleware/rateLimiter');
 const errorHandler = require('./middleware/errorHandler');
+const { initSocket } = require('./socket');
 
 // ── Initialize Express app ────────────────────────────────────────────────────
 const app = express();
@@ -54,7 +63,12 @@ app.use(cors({
   origin: [allowedOrigin, 'http://localhost:3000'],
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
 }));
+
+// ── Create HTTP Server & Initialize Socket.IO (Experiment 8) ──────────────────
+const server = http.createServer(app);
+initSocket(server, allowedOrigin);
 
 // ── Body parser with size limit ───────────────────────────────────────────────
 // Limits incoming request body size to 10kb.
@@ -92,12 +106,13 @@ app.get('/', (req, res) => {
   res.status(200).json({
     success: true,
     message: 'DriveFleet API is running',
-    version: '2.0.0',
-    experiment: 'Experiment 5 — Secure, Production-Ready RESTful APIs',
+    version: '3.0.0',
+    experiment: 'Experiment 6 — JWT Authentication & Role-Based Authorization',
     endpoints: {
       health: '/api/health',
       vehicles: '/api/vehicles',
       bookings: '/api/bookings',
+      auth: '/api/auth',
     },
   });
 });
@@ -130,10 +145,14 @@ app.use(errorHandler);
 
 // ── Start Server ──────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`\n🚀 DriveFleet server running on port ${PORT}`);
-  console.log(`   Experiment: 5 — Secure, Production-Ready RESTful APIs`);
+  console.log(`   Experiment: 8 — Real-Time Communication via WebSockets (Socket.IO)`);
   console.log(`   Health:    http://localhost:${PORT}/api/health`);
+  console.log(`   Auth:      http://localhost:${PORT}/api/auth`);
   console.log(`   Vehicles:  http://localhost:${PORT}/api/vehicles`);
-  console.log(`   Bookings:  http://localhost:${PORT}/api/bookings\n`);
+  console.log(`   Bookings:  http://localhost:${PORT}/api/bookings`);
+  console.log(`   Socket.IO: Ready for real-time events on port ${PORT}\n`);
 });
+
+module.exports = { app, server };

@@ -7,6 +7,7 @@
 //   4. ObjectId validation now handled by validateObjectId middleware (not here)
 
 const Vehicle = require('../models/Vehicle');
+const { emitVehicleAvailabilityUpdated } = require('../socket');
 
 // ── Allowed fields for mass-assignment protection ────────────────────────────
 // These are the only fields a client is permitted to set when creating/updating a vehicle.
@@ -134,6 +135,10 @@ const updateVehicleStatus = async (req, res, next) => {
     if (!vehicle) {
       return res.status(404).json({ success: false, message: 'Vehicle not found' });
     }
+
+    // Experiment 8: Emit real-time status update to all connected clients
+    emitVehicleAvailabilityUpdated(vehicle);
+
     res.status(200).json({ success: true, data: vehicle });
   } catch (error) {
     next(error);
@@ -160,6 +165,10 @@ const updateVehicleAvailability = async (req, res, next) => {
     if (!vehicle) {
       return res.status(404).json({ success: false, message: 'Vehicle not found' });
     }
+
+    // Experiment 8: Emit real-time availability update
+    emitVehicleAvailabilityUpdated(vehicle);
+
     res.status(200).json({ success: true, data: vehicle });
   } catch (error) {
     next(error);

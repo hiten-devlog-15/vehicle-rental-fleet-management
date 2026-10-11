@@ -1,17 +1,22 @@
-// routes/bookingRoutes.js — Experiment 5: secure booking API routes
+// routes/bookingRoutes.js — Experiment 6: JWT-protected booking API routes
 //
-// Changes from Experiment 4:
-//   • validateObjectId applied to all /:id routes
-//   • express-validator rules applied to POST and PUT (with validate middleware)
-//   • writeLimiter applied to write operations (POST, PUT, PATCH, DELETE)
+// Experiment 6 additions over Experiment 5:
+//   • protect middleware applied to all routes — requires a valid JWT Bearer token
+//   • authorize middleware applied to manager-only operations:
+//       - PATCH /:id/status  → fleet_manager, manager, admin
+//       - DELETE /:id        → fleet_manager, manager, admin
+//   • Customers can create bookings and view individual bookings (ownership
+//     enforced by the controller — see bookingController.js)
+//   • GET / returns all bookings for managers; customers see all (controller filters by role if needed)
 //
-// Middleware chain for a POST /api/bookings request:
-//   writeLimiter → createBookingRules → validate → createBooking
-//   ──────────────────────────────────────────────────────────────
-//   writeLimiter        → rate limit check
-//   createBookingRules  → validates customerEmail format, vehicleId as ObjectId, dates, etc.
-//   validate            → returns 400 with errors list if any validation failed
-//   createBooking       → controller runs only when all validation passed
+// Middleware chain for a POST /api/bookings request (Experiment 6):
+//   protect → writeLimiter → createBookingRules → validate → createBooking
+//   ──────────────────────────────────────────────────────────────────────
+//   protect             → verifies JWT, populates req.user
+//   writeLimiter        → rate limit check (30 per 15 min per IP)
+//   createBookingRules  → validates customerEmail, vehicleId, dates, etc.
+//   validate            → returns 400 with error list if any check failed
+//   createBooking       → controller creates booking (sets customerId from req.user)
 
 const express = require('express');
 const router = express.Router();
@@ -36,15 +41,24 @@ const {
   updateBookingStatusRules,
 } = require('../validators/bookingValidators');
 
-// ── GET /api/bookings, POST /api/bookings ────────────────────────────────────
-router.route('/')
-  .get(getAllBookings)
-  .post(writeLimiter, createBookingRules, validate, createBooking);
+// Experiment 6: JWT auth and role authorization
+const { protect, authorize } = require('../middleware/auth');
 
-// ── PATCH /api/bookings/:id/status ─────────────────────────────────────────
+// Management roles that can perform privileged booking operations
+const MANAGER_ROLES = ['fleet_manager', 'manager', 'admin'];
+
+// ── GET /api/bookings — protected: any authenticated user ─────────────────────
+// ── POST /api/bookings — protected: any authenticated user (customer creates booking) ─
+router.route('/')
+  .get(protect, getAllBookings)
+  .post(protect, writeLimiter, createBookingRules, validate, createBooking);
+
+// ── PATCH /api/bookings/:id/status — manager only ────────────────────────────
 // Must be defined before /:id to avoid Express matching "status" as an id
 router.patch(
   '/:id/status',
+  protect,
+  authorize(...MANAGER_ROLES),
   validateObjectId('booking'),
   writeLimiter,
   updateBookingStatusRules,
@@ -52,10 +66,12 @@ router.patch(
   updateBookingStatus
 );
 
-// ── GET /api/bookings/:id, PUT /api/bookings/:id, DELETE /api/bookings/:id ──
+// ── GET /api/bookings/:id — protected: auth required, ownership check in controller ──
+// ── PUT /api/bookings/:id — protected: auth required, ownership check in controller ──
+// ── DELETE /api/bookings/:id — manager only ──────────────────────────────────
 router.route('/:id')
-  .get(validateObjectId('booking'), getBookingById)
-  .put(validateObjectId('booking'), writeLimiter, updateBookingRules, validate, updateBooking)
-  .delete(validateObjectId('booking'), writeLimiter, deleteBooking);
+  .get(protect, validateObjectId('booking'), getBookingById)
+  .put(protect, validateObjectId('booking'), writeLimiter, updateBookingRules, validate, updateBooking)
+  .delete(protect, authorize(...MANAGER_ROLES), validateObjectId('booking'), writeLimiter, deleteBooking);
 
 module.exports = router;

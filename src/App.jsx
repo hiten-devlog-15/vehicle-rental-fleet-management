@@ -1,8 +1,9 @@
-// App.jsx — RBAC: ProtectedRoute guards + dynamic /dashboard route
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { SocketProvider } from './context/SocketContext';
 import { VehicleProvider } from './context/VehicleContext';
 import { BookingProvider } from './context/BookingContext';
+import NotificationToast from './components/NotificationToast';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
 import Vehicles from './pages/Vehicles';
@@ -17,12 +18,14 @@ import Maintenance from './pages/Maintenance';
 
 export default function App() {
   return (
-    // AuthProvider wraps the entire app so useContext(AuthContext) works everywhere
+    // AuthProvider wraps the entire app, followed by SocketProvider for real-time WebSockets
     <AuthProvider>
-      <VehicleProvider>
-        <BookingProvider>
-          <Router>
-            <Routes>
+      <SocketProvider>
+        <VehicleProvider>
+          <BookingProvider>
+            <Router>
+              <NotificationToast />
+              <Routes>
               {/* ── Public routes ─────────────────────────────────────── */}
               <Route path="/"         element={<Home />} />
               <Route path="/login"    element={<Login />} />
@@ -79,7 +82,8 @@ export default function App() {
           </Router>
         </BookingProvider>
       </VehicleProvider>
-    </AuthProvider>
-  );
+    </SocketProvider>
+  </AuthProvider>
+);
 }
 

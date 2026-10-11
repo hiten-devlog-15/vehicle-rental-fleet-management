@@ -1,24 +1,32 @@
-// controllers/bookingController.js — Experiment 5 upgrade
+// controllers/bookingController.js — Experiment 6 upgrade (JWT auth + ownership)
 //
-// Changes from Experiment 4:
-//   1. Consistent { success, data } response format across all handlers
-//   2. Mass-assignment protection: explicitly lists allowed fields
-//   3. Errors forwarded to the centralized errorHandler via next(err)
-//   4. ObjectId validation now handled by validateObjectId middleware (not here)
+// Experiment 6 additions over Experiment 5:
+//   1. customerId is now set from req.user.id (JWT payload) — not from client body.
+//      This prevents customers from booking on behalf of other users.
+//   2. getBookingById: customers can only retrieve their own bookings (403 if not owner).
+//      Managers (fleet_manager, manager, admin) can retrieve any booking.
+//   3. updateBooking: customers can only update their own bookings.
+//      Managers can update any booking.
+//   4. DELETE /:id is manager-only — enforced at route level (bookingRoutes.js).
+//   5. PATCH /:id/status is manager-only — enforced at route level.
 //
-// Business logic preserved from Experiment 4:
+// Business logic preserved from Experiments 4 & 5:
 //   - Create booking checks vehicle availability, sets vehicle → Booked
 //   - Cancel/Complete booking sets vehicle → Available
 
 const Booking = require('../models/Booking');
 const Vehicle = require('../models/Vehicle');
+const {
+  emitBookingCreated,
+  emitBookingStatusUpdated,
+  emitVehicleAvailabilityUpdated,
+} = require('../socket');
 
 // ── Allowed fields for booking creation (mass-assignment protection) ──────────
-// Explicitly list every field the client is allowed to supply.
-// Fields like _id, createdAt, updatedAt, vehicleName, vehicleType, pricePerDay are
-// set by the backend — the client cannot override them.
+// customerId is NOT in this list — it is always set from req.user.id server-side.
+// Clients cannot fake their identity by injecting a different customerId.
 const ALLOWED_BOOKING_FIELDS = [
-  'customerId', 'customerName', 'customerEmail', 'customerPhone',
+  'customerName', 'customerEmail', 'customerPhone',
   'vehicleId', 'pickupDate', 'returnDate', 'days',
   'totalAmount', 'pickupLocation', 'notes', 'status',
 ];
@@ -43,11 +51,26 @@ const pickFields = (obj, allowedFields) => {
   return result;
 };
 
+/**
+ * isManager — returns true if the authenticated user has a management role.
+ * Used to bypass ownership checks for privileged users.
+ */
+const MANAGER_ROLES = ['fleet_manager', 'manager', 'admin'];
+const isManager = (user) => user && MANAGER_ROLES.includes(user.role);
+
 // ── GET /api/bookings ─────────────────────────────────────────────────────────
-// Returns all bookings, populated with vehicle details
+// Managers see all bookings.
+// Customers see only their own bookings (filtered by customerId matching req.user.id).
 const getAllBookings = async (req, res, next) => {
   try {
-    const bookings = await Booking.find().populate('vehicleId', 'name type image status');
+    let query = {};
+
+    // Customers can only list their own bookings
+    if (req.user && !isManager(req.user)) {
+      query = { customerId: req.user.id };
+    }
+
+    const bookings = await Booking.find(query).populate('vehicleId', 'name type image status');
     res.status(200).json({ success: true, data: bookings });
   } catch (error) {
     next(error);
@@ -55,13 +78,23 @@ const getAllBookings = async (req, res, next) => {
 };
 
 // ── GET /api/bookings/:id ─────────────────────────────────────────────────────
-// Returns a single booking by its MongoDB _id
+// Returns a single booking by its MongoDB _id.
+// Ownership check: customers can only access their own bookings.
 const getBookingById = async (req, res, next) => {
   try {
     const booking = await Booking.findById(req.params.id).populate('vehicleId', 'name type image');
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
+
+    // Ownership check: customers can only see their own bookings
+    if (!isManager(req.user) && booking.customerId !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to access this booking.',
+      });
+    }
+
     res.status(200).json({ success: true, data: booking });
   } catch (error) {
     next(error);
@@ -70,18 +103,15 @@ const getBookingById = async (req, res, next) => {
 
 // ── POST /api/bookings ────────────────────────────────────────────────────────
 // Creates a new booking.
+// Experiment 6: customerId is set from req.user.id (JWT) — not from client body.
 // Business rules (from Experiment 4, preserved):
 //   1. Find the vehicle by ID
 //   2. Check that it is Available (not Booked or Maintenance)
-//   3. Create the booking with server-controlled fields (vehicleName, pricePerDay, etc.)
+//   3. Create the booking with server-controlled fields
 //   4. Update vehicle status → Booked, available → false
-//
-// express-validator createBookingRules already ran before this.
-// Mass-assignment protection: only ALLOWED_BOOKING_FIELDS are taken from req.body.
-// Backend sets vehicleName, vehicleType, pricePerDay, bookingDate — clients cannot fake these.
 const createBooking = async (req, res, next) => {
   try {
-    // Extract only safe client-supplied fields
+    // Extract only safe client-supplied fields (customerId is excluded from ALLOWED list)
     const clientData = pickFields(req.body, ALLOWED_BOOKING_FIELDS);
 
     // Find the vehicle
@@ -104,10 +134,13 @@ const createBooking = async (req, res, next) => {
       });
     }
 
-    // Create the booking — server sets vehicleName, vehicleType, pricePerDay, bookingDate
-    // These are read from the database, NOT from req.body (prevents price manipulation)
+    // Create the booking:
+    //   - customerId: set from req.user.id (JWT) — client cannot forge this
+    //   - vehicleName, vehicleType, pricePerDay: read from DB — client cannot fake price
+    //   - bookingDate: set by server
     const booking = await Booking.create({
       ...clientData,
+      customerId: req.user.id,            // Experiment 6: always from JWT, never from body
       vehicleName: vehicle.name,          // server-set: client cannot override vehicle name
       vehicleType: vehicle.type,          // server-set
       pricePerDay: vehicle.pricePerDay,   // server-set: client cannot submit a fake price
@@ -115,7 +148,17 @@ const createBooking = async (req, res, next) => {
     });
 
     // Update vehicle status to Booked
-    await Vehicle.findByIdAndUpdate(clientData.vehicleId, { status: 'Booked', available: false });
+    const updatedVehicle = await Vehicle.findByIdAndUpdate(
+      clientData.vehicleId,
+      { status: 'Booked', available: false },
+      { new: true }
+    );
+
+    // Experiment 8: Emit real-time events only AFTER MongoDB operations succeed
+    emitBookingCreated(booking);
+    if (updatedVehicle) {
+      emitVehicleAvailabilityUpdated(updatedVehicle);
+    }
 
     res.status(201).json({ success: true, data: booking });
   } catch (error) {
@@ -124,20 +167,31 @@ const createBooking = async (req, res, next) => {
 };
 
 // ── PUT /api/bookings/:id ─────────────────────────────────────────────────────
-// Updates a booking's editable details (mass-assignment protected)
+// Updates a booking's editable details (mass-assignment protected).
+// Ownership check: customers can only update their own bookings.
 const updateBooking = async (req, res, next) => {
   try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    // Ownership check: customers can only update their own bookings
+    if (!isManager(req.user) && booking.customerId !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to modify this booking.',
+      });
+    }
+
     const updateData = pickFields(req.body, ALLOWED_UPDATE_FIELDS);
 
-    const booking = await Booking.findByIdAndUpdate(
+    const updatedBooking = await Booking.findByIdAndUpdate(
       req.params.id,
       updateData,
       { new: true, runValidators: true }
     );
-    if (!booking) {
-      return res.status(404).json({ success: false, message: 'Booking not found' });
-    }
-    res.status(200).json({ success: true, data: booking });
+    res.status(200).json({ success: true, data: updatedBooking });
   } catch (error) {
     next(error);
   }
@@ -145,6 +199,7 @@ const updateBooking = async (req, res, next) => {
 
 // ── PATCH /api/bookings/:id/status ────────────────────────────────────────────
 // Updates booking status and adjusts vehicle availability accordingly.
+// Manager-only — enforced at route level (bookingRoutes.js).
 // express-validator updateBookingStatusRules already validated status before this.
 //
 // Status transitions (Experiment 4 business logic preserved):
@@ -163,19 +218,27 @@ const updateBookingStatus = async (req, res, next) => {
     booking.status = status;
     await booking.save();
 
-    // Sync vehicle status based on booking status change
+    let updatedVehicle = null;
     if (status === 'Cancelled' || status === 'Completed') {
       // Vehicle is free again
-      await Vehicle.findByIdAndUpdate(booking.vehicleId, {
-        status: 'Available',
-        available: true,
-      });
+      updatedVehicle = await Vehicle.findByIdAndUpdate(
+        booking.vehicleId,
+        { status: 'Available', available: true },
+        { new: true }
+      );
     } else if (status === 'Confirmed' || status === 'Active') {
       // Vehicle is occupied
-      await Vehicle.findByIdAndUpdate(booking.vehicleId, {
-        status: 'Booked',
-        available: false,
-      });
+      updatedVehicle = await Vehicle.findByIdAndUpdate(
+        booking.vehicleId,
+        { status: 'Booked', available: false },
+        { new: true }
+      );
+    }
+
+    // Experiment 8: Emit real-time events after persistence succeeds
+    emitBookingStatusUpdated(booking);
+    if (updatedVehicle) {
+      emitVehicleAvailabilityUpdated(updatedVehicle);
     }
 
     res.status(200).json({ success: true, data: booking });
@@ -185,7 +248,8 @@ const updateBookingStatus = async (req, res, next) => {
 };
 
 // ── DELETE /api/bookings/:id ──────────────────────────────────────────────────
-// Deletes a booking and frees the vehicle if it was active/confirmed
+// Deletes a booking and frees the vehicle if it was active/confirmed.
+// Manager-only — enforced at route level (bookingRoutes.js).
 const deleteBooking = async (req, res, next) => {
   try {
     const booking = await Booking.findById(req.params.id);
@@ -193,15 +257,23 @@ const deleteBooking = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
-    // Free the vehicle if the booking was active/confirmed
+    let freedVehicle = null;
     if (booking.status === 'Confirmed' || booking.status === 'Active') {
-      await Vehicle.findByIdAndUpdate(booking.vehicleId, {
-        status: 'Available',
-        available: true,
-      });
+      freedVehicle = await Vehicle.findByIdAndUpdate(
+        booking.vehicleId,
+        { status: 'Available', available: true },
+        { new: true }
+      );
     }
 
     await Booking.findByIdAndDelete(req.params.id);
+
+    // Experiment 8: Notify that booking has been removed/cancelled
+    emitBookingStatusUpdated({ ...booking.toObject(), status: 'Cancelled' });
+    if (freedVehicle) {
+      emitVehicleAvailabilityUpdated(freedVehicle);
+    }
+
     res.status(200).json({ success: true, message: 'Booking deleted successfully' });
   } catch (error) {
     next(error);

@@ -9,6 +9,7 @@
 
 import { createContext, useState, useCallback, useEffect } from 'react';
 import * as api from '../services/api';
+import { useSocket } from '../hooks/useSocket';
 
 // ── Context creation ──────────────────────────────────────────────────────────
 export const VehicleContext = createContext(null);
@@ -24,6 +25,42 @@ export function VehicleProvider({ children }) {
   // Loading and error states for Experiment 4 API integration
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Experiment 8: Real-time Socket.IO connection
+  const { socket, isConnected } = useSocket();
+
+  // ── Experiment 8: Real-time vehicle availability listener ───────────────────
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleVehicleAvailability = (data) => {
+      const targetId = data.id || data._id;
+      setVehicles((prev) =>
+        prev.map((v) =>
+          v.id === targetId || v._id === targetId
+            ? { ...v, status: data.status, available: data.available }
+            : v
+        )
+      );
+    };
+
+    socket.on('vehicleAvailabilityUpdated', handleVehicleAvailability);
+
+    return () => {
+      socket.off('vehicleAvailabilityUpdated', handleVehicleAvailability);
+    };
+  }, [socket]);
+
+  // Re-sync vehicles with REST API when socket reconnects
+  useEffect(() => {
+    if (isConnected) {
+      api.getVehicles().then((data) => {
+        if (Array.isArray(data)) {
+          setVehicles(data.map((v) => ({ ...v, id: v._id })));
+        }
+      }).catch((err) => console.warn('Vehicle sync failed on reconnect:', err.message));
+    }
+  }, [isConnected]);
 
   // ── Experiment 4: Load vehicles from MongoDB via REST API on mount ───────────
   useEffect(() => {

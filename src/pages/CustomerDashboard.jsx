@@ -7,6 +7,7 @@ import StatusBadge from '../components/StatusBadge';
 import { useAuth } from '../hooks/useAuth';
 import { useBookings } from '../hooks/useBookings';
 import { useVehicles } from '../hooks/useVehicles';
+import { useSocket } from '../hooks/useSocket';
 import {
   Car, Calendar, CheckCircle, Clock, ChevronRight,
   Bell, User, MapPin, LogIn,
@@ -17,6 +18,7 @@ export default function CustomerDashboard() {
   const { user, isAuthenticated } = useAuth();
   const { bookings, cancelBooking } = useBookings();
   const { vehicles } = useVehicles();
+  const { isConnected } = useSocket();
 
   const customerId = user?.id || 'C001';
   // Support customer ID, email match, or legacy mock IDs (C001 / U001)
@@ -62,6 +64,14 @@ export default function CustomerDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            {/* Real-time WebSocket connection indicator (Experiment 8) */}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-slate-200 bg-white shadow-xs">
+              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
+              <span className="text-slate-600 font-semibold hidden md:inline">
+                {isConnected ? 'Real-Time Connected' : 'Disconnected'}
+              </span>
+            </div>
+
             <button className="relative p-2 rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors">
               <Bell size={18} />
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
