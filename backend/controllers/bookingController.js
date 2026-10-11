@@ -67,7 +67,12 @@ const getAllBookings = async (req, res, next) => {
 
     // Customers can only list their own bookings
     if (req.user && !isManager(req.user)) {
-      query = { customerId: req.user.id };
+      query = {
+        $or: [
+          { customerId: req.user.id },
+          ...(req.user.email ? [{ customerEmail: req.user.email.toLowerCase() }] : []),
+        ],
+      };
     }
 
     const bookings = await Booking.find(query).populate('vehicleId', 'name type image status');
@@ -88,7 +93,11 @@ const getBookingById = async (req, res, next) => {
     }
 
     // Ownership check: customers can only see their own bookings
-    if (!isManager(req.user) && booking.customerId !== req.user.id) {
+    const isOwner =
+      booking.customerId === req.user.id ||
+      (req.user.email && booking.customerEmail && booking.customerEmail.toLowerCase() === req.user.email.toLowerCase());
+
+    if (!isManager(req.user) && !isOwner) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to access this booking.',
@@ -177,7 +186,11 @@ const updateBooking = async (req, res, next) => {
     }
 
     // Ownership check: customers can only update their own bookings
-    if (!isManager(req.user) && booking.customerId !== req.user.id) {
+    const isOwner =
+      booking.customerId === req.user.id ||
+      (req.user.email && booking.customerEmail && booking.customerEmail.toLowerCase() === req.user.email.toLowerCase());
+
+    if (!isManager(req.user) && !isOwner) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to modify this booking.',
@@ -212,6 +225,27 @@ const updateBookingStatus = async (req, res, next) => {
     const booking = await Booking.findById(req.params.id);
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    // Role check: If not manager/admin, user can only cancel their own booking
+    if (!isManager(req.user)) {
+      const isOwner =
+        booking.customerId === req.user.id ||
+        (req.user.email && booking.customerEmail && booking.customerEmail.toLowerCase() === req.user.email.toLowerCase());
+
+      if (!isOwner) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to modify this booking.',
+        });
+      }
+
+      if (status !== 'Cancelled') {
+        return res.status(403).json({
+          success: false,
+          message: 'Customers are only permitted to cancel their own bookings.',
+        });
+      }
     }
 
     // Update booking status

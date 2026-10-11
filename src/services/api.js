@@ -12,8 +12,10 @@ export const getToken = () => localStorage.getItem('drivefleet_token') || sessio
 export const setToken = (token, remember = true) => {
   if (remember) {
     localStorage.setItem('drivefleet_token', token);
+    sessionStorage.removeItem('drivefleet_token');
   } else {
     sessionStorage.setItem('drivefleet_token', token);
+    localStorage.removeItem('drivefleet_token');
   }
 };
 export const removeToken = () => {

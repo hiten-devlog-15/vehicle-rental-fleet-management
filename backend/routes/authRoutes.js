@@ -26,7 +26,7 @@ router.post('/login', login);
 // GET /api/auth/me — verify JWT token and return authenticated user
 router.get('/me', protect, getMe);
 
-// GET /api/auth/users — list all registered users (manager/admin only)
-router.get('/users', protect, authorize('fleet_manager', 'manager', 'admin'), getUsers);
+// GET /api/auth/users — list all registered users (admin only)
+router.get('/users', protect, authorize('admin'), getUsers);
 
 module.exports = router;

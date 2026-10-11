@@ -48,17 +48,17 @@ const { protect, authorize } = require('../middleware/auth');
 const MANAGER_ROLES = ['fleet_manager', 'manager', 'admin'];
 
 // ── GET /api/bookings — protected: any authenticated user ─────────────────────
-// ── POST /api/bookings — protected: any authenticated user (customer creates booking) ─
+// ── POST /api/bookings — customer and admin only (fleet managers cannot rent vehicles) ─
 router.route('/')
   .get(protect, getAllBookings)
-  .post(protect, writeLimiter, createBookingRules, validate, createBooking);
+  .post(protect, authorize('customer', 'admin'), writeLimiter, createBookingRules, validate, createBooking);
 
-// ── PATCH /api/bookings/:id/status — manager only ────────────────────────────
+// ── PATCH /api/bookings/:id/status — managers can update any status, customers can only cancel their own ─
 // Must be defined before /:id to avoid Express matching "status" as an id
 router.patch(
   '/:id/status',
   protect,
-  authorize(...MANAGER_ROLES),
+  authorize('customer', 'fleet_manager', 'manager', 'admin'),
   validateObjectId('booking'),
   writeLimiter,
   updateBookingStatusRules,

@@ -1,9 +1,9 @@
 // Sidebar.jsx — RBAC: filters nav links by user.role from AuthContext
 import { useState } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Car, Calendar, Wrench, Settings, LogOut,
-  ChevronRight, Menu, X, Car as CarIcon,
+  Menu, X, Car as CarIcon, Shield, ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
@@ -14,6 +14,7 @@ const ALL_LINKS = [
   { to: '/booking',         icon: Calendar,        label: 'Book Vehicle',  roles: ['customer', 'admin'] },
   { to: '/maintenance',     icon: Wrench,          label: 'Maintenance',   roles: ['fleet_manager', 'admin'] },
   { to: '/fleet-dashboard', icon: Settings,        label: 'Fleet Manager', roles: ['fleet_manager', 'admin'] },
+  { to: '/admin-dashboard', icon: Shield,          label: 'Admin Panel',   roles: ['admin'] },
 ];
 
 export default function Sidebar() {

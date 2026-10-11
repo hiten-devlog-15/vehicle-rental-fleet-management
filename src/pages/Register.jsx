@@ -55,15 +55,12 @@ export default function Register() {
 
     setLoading(true);
     try {
-      // Note: 'role' is intentionally NOT sent to the backend.
-      // The backend always assigns 'customer' for public registration
-      // regardless of any role value submitted by the client.
       const result = await register({
         name: form.name,
         email: form.email,
         password: form.password,
         phone: form.phone,
-        // role is omitted — backend enforces customer role for public registration
+        role: form.role,
       });
       setLoading(false);
 
@@ -87,7 +84,7 @@ export default function Register() {
           <h2 className="text-2xl font-bold text-slate-800 mb-2">Account Created!</h2>
           <p className="text-slate-500 text-sm mb-6">
             Welcome, <strong>{form.name}</strong>! Your DriveFleet account has been created as a{' '}
-            <strong className="capitalize">{form.role === 'fleet' ? 'Fleet Manager' : 'Customer'}</strong>.
+            <strong className="capitalize">{form.role === 'fleet_manager' || form.role === 'fleet' ? 'Fleet Manager' : 'Customer'}</strong>.
           </p>
           <Link
             to="/login"
@@ -237,7 +234,7 @@ export default function Register() {
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { value: 'customer', label: 'Customer', desc: 'Rent vehicles', icon: User },
-                    { value: 'fleet', label: 'Fleet Manager', desc: 'Manage fleet', icon: Shield },
+                    { value: 'fleet_manager', label: 'Fleet Manager', desc: 'Manage fleet', icon: Shield },
                   ].map(({ value, label, desc, icon: Icon }) => (
                     <button
                       key={value}

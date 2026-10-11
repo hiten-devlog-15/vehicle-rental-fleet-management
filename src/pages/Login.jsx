@@ -34,11 +34,13 @@ export default function Login() {
 
   // useEffect #2 — redirect if already logged in
   useEffect(() => {
-    if (isAuthenticated) {
-      if (user?.role === 'fleet_manager' || user?.role === 'admin') {
+    if (isAuthenticated && user) {
+      if (user.role === 'admin') {
+        navigate('/admin-dashboard');
+      } else if (user.role === 'fleet_manager' || user.role === 'manager') {
         navigate('/fleet-dashboard');
       } else {
-        navigate('/customer-dashboard');
+        navigate('/dashboard');
       }
     }
   }, [isAuthenticated, user, navigate]);
@@ -68,12 +70,14 @@ export default function Login() {
         return;
       }
 
-      // Navigate based on user role
+      // Navigate based on verified user role
       const userRole = result.user?.role;
-      if (userRole === 'fleet_manager' || userRole === 'admin' || userRole === 'manager') {
+      if (userRole === 'admin') {
+        navigate('/admin-dashboard');
+      } else if (userRole === 'fleet_manager' || userRole === 'manager') {
         navigate('/fleet-dashboard');
       } else {
-        navigate('/customer-dashboard');
+        navigate('/dashboard');
       }
     } catch (err) {
       setLoading(false);

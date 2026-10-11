@@ -33,6 +33,14 @@ const registerRules = [
     .optional()
     .trim()
     .isLength({ max: 20 }).withMessage('Phone number cannot exceed 20 characters'),
+
+  // Role: optional on registration — if provided, only customer or fleet_manager allowed.
+  // Admin and other privileged roles cannot be registered through public endpoints.
+  body('role')
+    .optional()
+    .trim()
+    .isIn(['customer', 'fleet_manager', 'fleet'])
+    .withMessage('Invalid role. Only customer and fleet_manager roles are permitted. Admin registration is prohibited.'),
 ];
 
 module.exports = { registerRules };

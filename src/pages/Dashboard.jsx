@@ -1,12 +1,13 @@
-// Dashboard.jsx — Dynamic dashboard router
-// Reads user.role from AuthContext and renders the correct dashboard view.
+// Dashboard.jsx — Dynamic role-based dashboard router
+// Reads verified user.role from AuthContext and renders the corresponding view:
 // - customer      → CustomerDashboard
 // - fleet_manager → FleetDashboard
-// - admin         → FleetDashboard (admin overview with full fleet access)
+// - admin         → AdminDashboard
 
 import { useAuth } from '../hooks/useAuth';
 import CustomerDashboard from './CustomerDashboard';
 import FleetDashboard from './FleetDashboard';
+import AdminDashboard from './AdminDashboard';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -15,6 +16,10 @@ export default function Dashboard() {
     return <CustomerDashboard />;
   }
 
-  // fleet_manager and admin both get the Fleet Dashboard
+  if (user?.role === 'admin') {
+    return <AdminDashboard />;
+  }
+
+  // fleet_manager and manager get the Fleet Dashboard
   return <FleetDashboard />;
 }

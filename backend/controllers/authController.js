@@ -48,8 +48,21 @@ const generateToken = (user) => {
  */
 const register = async (req, res, next) => {
   try {
-    const { name, email, password, phone } = req.body;
-    // Intentionally ignore any 'role' field from the request body.
+    const { name, email, password, phone, role } = req.body;
+
+    // Security check: Never permit 'admin' or 'manager' via public registration
+    if (role && (role.toLowerCase() === 'admin' || role.toLowerCase() === 'manager')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Admin or manager registration is not permitted through public registration.',
+      });
+    }
+
+    // Determine role: Allow fleet_manager (or 'fleet' alias), otherwise default to customer
+    let assignedRole = 'customer';
+    if (role === 'fleet_manager' || role === 'fleet') {
+      assignedRole = 'fleet_manager';
+    }
 
     // 1. Check if user already exists with this email
     const existingUser = await User.findOne({ email: email.toLowerCase() });
@@ -60,14 +73,14 @@ const register = async (req, res, next) => {
       });
     }
 
-    // 2. Create user — role is ALWAYS 'customer' for public registration
+    // 2. Create user with assigned role
     //    Mongoose pre('save') hook in User.js automatically hashes password with bcryptjs
     const user = await User.create({
       name: name.trim(),
       email: email.trim().toLowerCase(),
       password,
       phone: phone ? phone.trim() : '',
-      role: 'customer', // Never trusts role from the client
+      role: assignedRole,
     });
 
     // 4. Generate JWT token

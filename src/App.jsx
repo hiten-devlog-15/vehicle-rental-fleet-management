@@ -12,8 +12,8 @@ import Booking from './pages/Booking';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
-import CustomerDashboard from './pages/CustomerDashboard';
 import FleetDashboard from './pages/FleetDashboard';
+import AdminDashboard from './pages/AdminDashboard';
 import Maintenance from './pages/Maintenance';
 
 export default function App() {
@@ -69,6 +69,16 @@ export default function App() {
                 element={
                   <ProtectedRoute allowedRoles={['fleet_manager', 'admin']}>
                     <FleetDashboard />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* ── Admin only ─────────────────────────────────────────── */}
+              <Route
+                path="/admin-dashboard"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminDashboard />
                   </ProtectedRoute>
                 }
               />

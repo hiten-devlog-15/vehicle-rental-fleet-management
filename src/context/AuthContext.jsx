@@ -65,6 +65,13 @@ export function AuthProvider({ children }) {
           };
           setUser(userWithAvatar);
           setTokenState(storedToken);
+
+          // Keep stored user payload updated with freshly verified backend data
+          if (localStorage.getItem('drivefleet_token')) {
+            localStorage.setItem('drivefleet_user', JSON.stringify(userWithAvatar));
+          } else {
+            sessionStorage.setItem('drivefleet_user', JSON.stringify(userWithAvatar));
+          }
         } else {
           // Invalid response, clear stale session
           removeToken();
@@ -110,8 +117,10 @@ export function AuthProvider({ children }) {
       setToken(userToken, remember);
       if (remember) {
         localStorage.setItem('drivefleet_user', JSON.stringify(userWithAvatar));
+        sessionStorage.removeItem('drivefleet_user');
       } else {
         sessionStorage.setItem('drivefleet_user', JSON.stringify(userWithAvatar));
+        localStorage.removeItem('drivefleet_user');
       }
 
       setUser(userWithAvatar);
@@ -140,6 +149,7 @@ export function AuthProvider({ children }) {
         };
         setToken(userToken, true);
         localStorage.setItem('drivefleet_user', JSON.stringify(userWithAvatar));
+        sessionStorage.removeItem('drivefleet_user');
         setUser(userWithAvatar);
         setTokenState(userToken);
       }
