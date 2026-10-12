@@ -2,18 +2,17 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, Car, Calendar, Wrench, Settings, LogOut,
+  LayoutDashboard, Car, Calendar, Wrench, LogOut,
   Menu, X, Car as CarIcon, Shield, ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 // Master link list — each entry declares which roles may see it
 const ALL_LINKS = [
-  { to: '/dashboard',       icon: LayoutDashboard, label: 'Dashboard',     roles: ['customer', 'fleet_manager', 'admin'] },
-  { to: '/vehicles',        icon: Car,             label: 'Vehicles',      roles: ['customer', 'fleet_manager', 'admin'] },
+  { to: '/dashboard',       icon: LayoutDashboard, label: 'Dashboard',     roles: ['customer', 'fleet_manager', 'manager', 'admin'] },
+  { to: '/vehicles',        icon: Car,             label: 'Vehicles',      roles: ['customer', 'admin'] },
   { to: '/booking',         icon: Calendar,        label: 'Book Vehicle',  roles: ['customer', 'admin'] },
-  { to: '/maintenance',     icon: Wrench,          label: 'Maintenance',   roles: ['fleet_manager', 'admin'] },
-  { to: '/fleet-dashboard', icon: Settings,        label: 'Fleet Manager', roles: ['fleet_manager', 'admin'] },
+  { to: '/maintenance',     icon: Wrench,          label: 'Maintenance',   roles: ['fleet_manager', 'manager', 'admin'] },
   { to: '/admin-dashboard', icon: Shield,          label: 'Admin Panel',   roles: ['admin'] },
 ];
 

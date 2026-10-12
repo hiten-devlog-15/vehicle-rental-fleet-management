@@ -15,6 +15,31 @@ import Dashboard from './pages/Dashboard';
 import FleetDashboard from './pages/FleetDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import Maintenance from './pages/Maintenance';
+import { useAuth } from './hooks/useAuth';
+
+function FleetDashboardRoute() {
+  const { user } = useAuth();
+  if (user?.role === 'fleet_manager' || user?.role === 'manager') {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <FleetDashboard />;
+}
+
+function CustomerVehiclesRoute() {
+  const { user } = useAuth();
+  if (user?.role === 'fleet_manager' || user?.role === 'manager') {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <Vehicles />;
+}
+
+function CustomerVehicleDetailsRoute() {
+  const { user } = useAuth();
+  if (user?.role === 'fleet_manager' || user?.role === 'manager') {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <VehicleDetails />;
+}
 
 export default function App() {
   return (
@@ -31,9 +56,9 @@ export default function App() {
               <Route path="/login"    element={<Login />} />
               <Route path="/register" element={<Register />} />
 
-              {/* ── All authenticated users ───────────────────────────── */}
-              <Route path="/vehicles"     element={<Vehicles />} />
-              <Route path="/vehicles/:id" element={<VehicleDetails />} />
+              {/* ── Vehicle browsing (customers, guests, admins; fleet manager redirected to dashboard) ── */}
+              <Route path="/vehicles"     element={<CustomerVehiclesRoute />} />
+              <Route path="/vehicles/:id" element={<CustomerVehicleDetailsRoute />} />
 
               {/* ── /dashboard: role-aware dynamic dashboard ──────────── */}
               <Route
@@ -68,7 +93,7 @@ export default function App() {
                 path="/fleet-dashboard"
                 element={
                   <ProtectedRoute allowedRoles={['fleet_manager', 'admin']}>
-                    <FleetDashboard />
+                    <FleetDashboardRoute />
                   </ProtectedRoute>
                 }
               />

@@ -37,8 +37,6 @@ export default function Login() {
     if (isAuthenticated && user) {
       if (user.role === 'admin') {
         navigate('/admin-dashboard');
-      } else if (user.role === 'fleet_manager' || user.role === 'manager') {
-        navigate('/fleet-dashboard');
       } else {
         navigate('/dashboard');
       }
@@ -74,8 +72,6 @@ export default function Login() {
       const userRole = result.user?.role;
       if (userRole === 'admin') {
         navigate('/admin-dashboard');
-      } else if (userRole === 'fleet_manager' || userRole === 'manager') {
-        navigate('/fleet-dashboard');
       } else {
         navigate('/dashboard');
       }

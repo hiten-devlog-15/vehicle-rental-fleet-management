@@ -6,7 +6,7 @@ import Footer from '../components/Footer';
 import StatusBadge from '../components/StatusBadge';
 import {
   Star, Fuel, Settings, Users, Gauge, Calendar,
-  ChevronLeft, CheckCircle2, MapPin,
+  ChevronLeft, CheckCircle2,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
