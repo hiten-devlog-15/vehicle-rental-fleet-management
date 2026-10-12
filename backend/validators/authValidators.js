@@ -43,4 +43,41 @@ const registerRules = [
     .withMessage('Invalid role. Only customer and fleet_manager roles are permitted. Admin registration is prohibited.'),
 ];
 
-module.exports = { registerRules };
+// ── Profile Update Validation Rules ──────────────────────────────────────────
+// Validates personal info fields permitted for self-service updates.
+const updateProfileRules = [
+  // Full name: required if provided, 2–100 chars
+  body('name')
+    .trim()
+    .notEmpty().withMessage('Full name is required')
+    .isLength({ min: 2, max: 100 }).withMessage('Name must be between 2 and 100 characters'),
+
+  // Phone: optional — max 20 chars
+  body('phone')
+    .optional()
+    .trim()
+    .isLength({ max: 20 }).withMessage('Phone number cannot exceed 20 characters'),
+
+  // Avatar: optional — max 500 chars (preset id or photo url)
+  body('avatar')
+    .optional()
+    .trim()
+    .isLength({ max: 500 }).withMessage('Avatar identifier cannot exceed 500 characters'),
+];
+
+// ── Password Change Validation Rules ─────────────────────────────────────────
+// Requires current password and validates new password.
+const changePasswordRules = [
+  body('currentPassword')
+    .notEmpty().withMessage('Current password is required'),
+
+  body('newPassword')
+    .notEmpty().withMessage('New password is required')
+    .isLength({ min: 8 }).withMessage('New password must be at least 8 characters'),
+];
+
+module.exports = {
+  registerRules,
+  updateProfileRules,
+  changePasswordRules,
+};

@@ -12,8 +12,19 @@
 
 const express = require('express');
 const router = express.Router();
-const { register, login, getMe, getUsers } = require('../controllers/authController');
-const { registerRules } = require('../validators/authValidators');
+const {
+  register,
+  login,
+  getMe,
+  updateProfile,
+  changePassword,
+  getUsers,
+} = require('../controllers/authController');
+const {
+  registerRules,
+  updateProfileRules,
+  changePasswordRules,
+} = require('../validators/authValidators');
 const validate = require('../middleware/validate');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -25,6 +36,15 @@ router.post('/login', login);
 
 // GET /api/auth/me — verify JWT token and return authenticated user
 router.get('/me', protect, getMe);
+
+// PUT /api/auth/profile — update profile of authenticated user
+router.put('/profile', protect, updateProfileRules, validate, updateProfile);
+
+// PUT /api/auth/me — alias for profile update
+router.put('/me', protect, updateProfileRules, validate, updateProfile);
+
+// PUT /api/auth/change-password — change password of authenticated user
+router.put('/change-password', protect, changePasswordRules, validate, changePassword);
 
 // GET /api/auth/users — list all registered users (admin only)
 router.get('/users', protect, authorize('admin'), getUsers);

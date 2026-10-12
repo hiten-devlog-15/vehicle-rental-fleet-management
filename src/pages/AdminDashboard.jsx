@@ -11,6 +11,8 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import DashboardCard from '../components/DashboardCard';
+import UserMenu from '../components/UserMenu';
+import NotificationCenter from '../components/NotificationCenter';
 import { useAuth } from '../hooks/useAuth';
 import { useVehicles } from '../hooks/useVehicles';
 import { useBookings } from '../hooks/useBookings';
@@ -137,14 +139,10 @@ export default function AdminDashboard() {
               </span>
             </div>
 
-            <div className="flex items-center gap-2 pl-3 border-l border-slate-200">
-              <div className="w-8 h-8 rounded-xl bg-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-xs">
-                {user?.avatar || 'AD'}
-              </div>
-              <div className="hidden sm:block text-left">
-                <p className="text-xs font-semibold text-slate-700">{user?.name || 'Admin'}</p>
-                <p className="text-xs text-purple-600 font-bold uppercase tracking-wider">Super Administrator</p>
-              </div>
+            <NotificationCenter />
+
+            <div className="pl-3 border-l border-slate-200">
+              <UserMenu align="right" />
             </div>
           </div>
         </header>

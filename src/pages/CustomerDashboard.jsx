@@ -4,13 +4,15 @@ import { Link } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import DashboardCard from '../components/DashboardCard';
 import StatusBadge from '../components/StatusBadge';
+import UserMenu from '../components/UserMenu';
+import NotificationCenter from '../components/NotificationCenter';
 import { useAuth } from '../hooks/useAuth';
 import { useBookings } from '../hooks/useBookings';
 import { useVehicles } from '../hooks/useVehicles';
 import { useSocket } from '../hooks/useSocket';
 import {
   Car, Calendar, CheckCircle, Clock, ChevronRight,
-  Bell, User, MapPin, LogIn,
+  MapPin, LogIn,
 } from 'lucide-react';
 
 export default function CustomerDashboard() {
@@ -46,7 +48,6 @@ export default function CustomerDashboard() {
 
   // Display name: use logged-in user name if available, else fallback to mock name
   const displayName = user?.name || 'Arjun Sharma';
-  const displayRole = user?.role ? user.role.replace('_', ' ') : 'Customer';
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-100">
@@ -72,23 +73,10 @@ export default function CustomerDashboard() {
               </span>
             </div>
 
-            <button className="relative p-2 rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors">
-              <Bell size={18} />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
-            <div className="flex items-center gap-2 pl-3 border-l border-slate-200">
-              <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center">
-                {isAuthenticated ? (
-                  <span className="text-white text-xs font-bold">{user?.avatar || 'U'}</span>
-                ) : (
-                  <User size={14} className="text-white" />
-                )}
-              </div>
-              <div className="hidden sm:block">
-                {/* useContext user data rendered here */}
-                <p className="text-xs font-semibold text-slate-700">{displayName}</p>
-                <p className="text-xs text-slate-400 capitalize">{displayRole}</p>
-              </div>
+            <NotificationCenter />
+
+            <div className="pl-3 border-l border-slate-200">
+              <UserMenu align="right" />
             </div>
           </div>
         </header>
@@ -155,8 +143,10 @@ export default function CustomerDashboard() {
                     <span>Until {new Date(activeBooking.returnDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
                   </div>
                   <div className="flex items-center gap-2 text-blue-100 text-sm">
-                    <MapPin size={14} />
-                    <span className="truncate max-w-40">{activeBooking.pickupLocation}</span>
+                    <MapPin size={14} className="shrink-0" />
+                    <span className="truncate max-w-56">
+                      {activeBooking.pickupLocation} {activeBooking.destination ? `→ ${activeBooking.destination}` : ''}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -177,7 +167,7 @@ export default function CustomerDashboard() {
               <table className="w-full text-sm">
                 <thead className="bg-slate-50">
                   <tr>
-                    {['Booking ID', 'Vehicle', 'Pickup', 'Return', 'Amount', 'Status', 'Actions'].map((h) => (
+                    {['Booking ID', 'Vehicle', 'Route (Pickup → Drop)', 'Pickup', 'Return', 'Amount', 'Status', 'Actions'].map((h) => (
                       <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                         {h}
                       </th>
@@ -189,6 +179,14 @@ export default function CustomerDashboard() {
                     <tr key={b.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-5 py-3.5 font-mono text-xs text-blue-600 font-semibold">{b.id}</td>
                       <td className="px-5 py-3.5 font-medium text-slate-700">{b.vehicleName}</td>
+                      <td className="px-5 py-3.5 text-xs text-slate-600">
+                        <div className="flex flex-col max-w-[200px]">
+                          <span className="font-medium text-slate-700 truncate">{b.pickupLocation || '—'}</span>
+                          {b.destination && (
+                            <span className="text-slate-400 truncate">↳ {b.destination}</span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-5 py-3.5 text-slate-500">{b.pickupDate}</td>
                       <td className="px-5 py-3.5 text-slate-500">{b.returnDate}</td>
                       <td className="px-5 py-3.5 font-semibold text-slate-700">₹{b.totalAmount.toLocaleString()}</td>
@@ -202,7 +200,7 @@ export default function CustomerDashboard() {
                                 cancelBooking(b.id);
                               }
                             }}
-                            className="text-xs font-semibold text-red-600 hover:text-red-700 hover:underline transition-colors"
+                            className="text-xs font-semibold text-red-600 hover:text-red-700 hover:underline transition-colors cursor-pointer"
                           >
                             Cancel
                           </button>
@@ -225,6 +223,12 @@ export default function CustomerDashboard() {
                     </div>
                     <StatusBadge status={b.status} />
                   </div>
+                  {b.destination && (
+                    <div className="text-xs text-slate-500 mb-1.5 flex items-center gap-1">
+                      <MapPin size={12} className="text-blue-500 shrink-0" />
+                      <span>{b.pickupLocation} → {b.destination}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-xs text-slate-500">
                     <span>{b.pickupDate} → {b.returnDate}</span>
                     <span className="font-semibold text-slate-700">₹{b.totalAmount.toLocaleString()}</span>

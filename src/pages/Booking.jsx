@@ -17,6 +17,7 @@ export default function Booking() {
     pickupDate: '',
     returnDate: '',
     pickupLocation: '',
+    destination: '',
   });
 
   const selectedVehicle = vehicles.find((v) => v.id === formData.vehicleId) || null;
@@ -42,6 +43,7 @@ export default function Booking() {
       pickupDate: data.pickupDate,
       returnDate: data.returnDate,
       pickupLocation: data.pickupLocation,
+      destination: data.destination,
     });
   };
 
@@ -79,6 +81,7 @@ export default function Booking() {
                 pickupDate={formData.pickupDate}
                 returnDate={formData.returnDate}
                 pickupLocation={formData.pickupLocation}
+                destination={formData.destination}
               />
             </div>
           </div>

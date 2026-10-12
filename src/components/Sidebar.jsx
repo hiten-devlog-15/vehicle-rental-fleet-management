@@ -3,17 +3,18 @@ import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Car, Calendar, Wrench, LogOut,
-  Menu, X, Car as CarIcon, Shield, ChevronRight,
+  Menu, X, Car as CarIcon, Shield, ChevronRight, User,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 // Master link list — each entry declares which roles may see it
 const ALL_LINKS = [
-  { to: '/dashboard',       icon: LayoutDashboard, label: 'Dashboard',     roles: ['customer', 'fleet_manager', 'manager', 'admin'] },
-  { to: '/vehicles',        icon: Car,             label: 'Vehicles',      roles: ['customer', 'admin'] },
-  { to: '/booking',         icon: Calendar,        label: 'Book Vehicle',  roles: ['customer', 'admin'] },
-  { to: '/maintenance',     icon: Wrench,          label: 'Maintenance',   roles: ['fleet_manager', 'manager', 'admin'] },
-  { to: '/admin-dashboard', icon: Shield,          label: 'Admin Panel',   roles: ['admin'] },
+  { to: '/dashboard',       icon: LayoutDashboard, label: 'Dashboard',          roles: ['customer', 'fleet_manager', 'manager', 'admin'] },
+  { to: '/vehicles',        icon: Car,             label: 'Vehicles',           roles: ['customer', 'admin'] },
+  { to: '/booking',         icon: Calendar,        label: 'Book Vehicle',       roles: ['customer', 'admin'] },
+  { to: '/maintenance',     icon: Wrench,          label: 'Maintenance',        roles: ['fleet_manager', 'manager', 'admin'] },
+  { to: '/admin-dashboard', icon: Shield,          label: 'Admin Panel',        roles: ['admin'] },
+  { to: '/profile',         icon: User,            label: 'Profile & Settings', roles: ['customer', 'fleet_manager', 'manager', 'admin'] },
 ];
 
 export default function Sidebar() {
@@ -54,14 +55,38 @@ export default function Sidebar() {
       {/* Role badge + user info */}
       {!collapsed && (
         <div className="px-4 pt-4 pb-2">
-          <span className="text-xs font-semibold bg-blue-600/30 text-blue-300 px-2.5 py-1 rounded-full uppercase tracking-wider capitalize">
-            {roleLabel}
-          </span>
-          {/* Show logged-in user name from context */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold bg-blue-600/30 text-blue-300 px-2.5 py-1 rounded-full uppercase tracking-wider capitalize">
+              {roleLabel}
+            </span>
+            {isAuthenticated && user && (
+              <NavLink
+                to="/profile"
+                onClick={() => setMobileOpen(false)}
+                className="text-[11px] text-blue-400 hover:text-white transition-colors"
+                title="Profile & Settings"
+              >
+                Settings
+              </NavLink>
+            )}
+          </div>
+          {/* Show logged-in user name from context with link to profile */}
           {isAuthenticated && user && (
-            <p className="text-xs text-slate-400 mt-2 truncate">
-              <span className="text-slate-300 font-medium">{user.name}</span>
-            </p>
+            <NavLink
+              to="/profile"
+              onClick={() => setMobileOpen(false)}
+              className="group block mt-2"
+              title="Click to view profile"
+            >
+              <div className="flex items-center gap-2 text-xs text-slate-400 group-hover:text-blue-300 transition-colors">
+                <span className="w-5 h-5 rounded-md bg-blue-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0">
+                  {user.avatar || 'DF'}
+                </span>
+                <span className="text-slate-300 font-medium truncate group-hover:text-white">
+                  {user.name}
+                </span>
+              </div>
+            </NavLink>
           )}
         </div>
       )}

@@ -5,16 +5,14 @@ import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
 import Button from '../components/Button';
 import DashboardCard from '../components/DashboardCard';
+import UserMenu from '../components/UserMenu';
+import NotificationCenter from '../components/NotificationCenter';
 import { maintenanceRecords, maintenanceTypes, maintenanceStatuses } from '../data/maintenance';
 import { useVehicles } from '../hooks/useVehicles';
-import { useAuth } from '../hooks/useAuth';
-import { Wrench, Plus, CalendarClock, IndianRupee, CheckCircle, AlertCircle } from 'lucide-react';
+import { Wrench, Plus, CalendarClock, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function Maintenance() {
   const { vehicles } = useVehicles();
-  const { user } = useAuth();
-  const displayName = user?.name || 'Fleet Manager';
-  const displayRole = user?.role ? user.role.replace(/_/g, ' ') : 'Fleet Manager';
   const [records, setRecords] = useState(maintenanceRecords);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({
@@ -84,14 +82,9 @@ export default function Maintenance() {
             >
               Add Record
             </Button>
-            <div className="flex items-center gap-2 pl-3 border-l border-slate-200">
-              <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center">
-                <span className="text-white text-xs font-bold">{user?.avatar || 'FM'}</span>
-              </div>
-              <div className="hidden sm:block">
-                <p className="text-xs font-semibold text-slate-700">{displayName}</p>
-                <p className="text-xs text-slate-400 capitalize">{displayRole}</p>
-              </div>
+            <NotificationCenter />
+            <div className="pl-3 border-l border-slate-200">
+              <UserMenu align="right" />
             </div>
           </div>
         </header>

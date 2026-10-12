@@ -15,6 +15,7 @@ import Dashboard from './pages/Dashboard';
 import FleetDashboard from './pages/FleetDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import Maintenance from './pages/Maintenance';
+import Profile from './pages/Profile';
 import { useAuth } from './hooks/useAuth';
 
 function FleetDashboardRoute() {
@@ -104,6 +105,16 @@ export default function App() {
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* ── Profile & Account Settings (all authenticated roles) ── */}
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute allowedRoles={['customer', 'fleet_manager', 'manager', 'admin']}>
+                    <Profile />
                   </ProtectedRoute>
                 }
               />

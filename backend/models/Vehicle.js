@@ -124,6 +124,18 @@ const vehicleSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+
+    // Fleet Manager Assignment / Ownership
+    managerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    assignedManager: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
   },
   {
     // Automatically adds createdAt and updatedAt timestamps

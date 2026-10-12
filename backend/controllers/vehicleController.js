@@ -16,14 +16,14 @@ const ALLOWED_CREATE_FIELDS = [
   'name', 'type', 'brand', 'image', 'fuel', 'transmission',
   'seats', 'mileage', 'year', 'color', 'registrationNo',
   'pricePerDay', 'rating', 'reviews', 'available', 'status',
-  'description', 'features',
+  'description', 'features', 'managerId', 'assignedManager',
 ];
 
 const ALLOWED_UPDATE_FIELDS = [
   'name', 'type', 'brand', 'image', 'fuel', 'transmission',
   'seats', 'mileage', 'year', 'color', 'registrationNo',
   'pricePerDay', 'rating', 'reviews', 'available', 'status',
-  'description', 'features',
+  'description', 'features', 'managerId', 'assignedManager',
 ];
 
 /**

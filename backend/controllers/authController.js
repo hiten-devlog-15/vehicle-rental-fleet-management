@@ -189,11 +189,135 @@ const getMe = async (req, res, next) => {
       email: user.email,
       role: user.role,
       phone: user.phone || '',
+      avatar: user.avatar || '',
+      createdAt: user.createdAt,
     };
     res.status(200).json({
       success: true,
       user: safeUser,
       data: safeUser,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Update profile for authenticated user
+ * @route   PUT /api/auth/profile
+ * @access  Private
+ *
+ * Security:
+ * - User ID is derived exclusively from req.user.id (verified JWT)
+ * - Only permitted personal fields (name, phone, avatar) are updated
+ * - Privileged fields (role, email, password, permissions) are strictly ignored
+ */
+const updateProfile = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    const { name, phone, avatar } = req.body;
+
+    if (name !== undefined) {
+      user.name = name.trim();
+    }
+    if (phone !== undefined) {
+      user.phone = phone.trim();
+    }
+    if (avatar !== undefined) {
+      user.avatar = avatar.trim();
+    }
+
+    await user.save();
+
+    const safeUser = {
+      id: user._id.toString(),
+      _id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone || '',
+      avatar: user.avatar || '',
+      createdAt: user.createdAt,
+    };
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: safeUser,
+      data: safeUser,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Change password for authenticated user
+ * @route   PUT /api/auth/change-password
+ * @access  Private
+ *
+ * Security:
+ * - Requires current password verification via bcrypt.compare()
+ * - Hashes new password using User schema pre-save hook (bcryptjs with 12 rounds)
+ * - Never returns password hashes or secrets in response
+ */
+const changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide both current and new password.',
+      });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 8 characters long.',
+      });
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password cannot be the same as your current password.',
+      });
+    }
+
+    // Retrieve user with password hash (select: false in schema)
+    const user = await User.findById(req.user.id).select('+password');
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    // Verify current password against stored hash
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password is incorrect.',
+      });
+    }
+
+    // Update password (triggers bcrypt hash in pre-save hook)
+    user.password = newPassword;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Password changed successfully.',
     });
   } catch (error) {
     next(error);
@@ -222,5 +346,7 @@ module.exports = {
   register,
   login,
   getMe,
+  updateProfile,
+  changePassword,
   getUsers,
 };

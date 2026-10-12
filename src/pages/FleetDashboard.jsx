@@ -6,13 +6,15 @@ import DashboardCard from '../components/DashboardCard';
 import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
 import Button from '../components/Button';
+import UserMenu from '../components/UserMenu';
+import NotificationCenter from '../components/NotificationCenter';
 import { useAuth } from '../hooks/useAuth';
 import { useVehicles } from '../hooks/useVehicles';
 import { useBookings } from '../hooks/useBookings';
 import { useSocket } from '../hooks/useSocket';
 import {
   Car, CheckCircle, Wrench, PauseCircle,
-  Plus, Pencil, Trash2, Eye, Bell, User, Search, LogIn, Calendar, Activity,
+  Plus, Pencil, Trash2, Eye, Search, LogIn, Calendar,
 } from 'lucide-react';
 
 export default function FleetDashboard() {
@@ -95,7 +97,6 @@ export default function FleetDashboard() {
 
   // Display name from auth context or fallback
   const displayName = user?.name || 'Rajan Verma';
-  const displayRole = user?.role ? user.role.replace('_', ' ') : 'Fleet Manager';
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-100">
@@ -130,19 +131,9 @@ export default function FleetDashboard() {
             >
               Add Vehicle
             </Button>
-            <div className="flex items-center gap-2 pl-3 border-l border-slate-200">
-              <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center">
-                {isAuthenticated ? (
-                  <span className="text-white text-xs font-bold">{user?.avatar || 'FM'}</span>
-                ) : (
-                  <User size={14} className="text-white" />
-                )}
-              </div>
-              <div className="hidden sm:block">
-                {/* useContext data rendered in header */}
-                <p className="text-xs font-semibold text-slate-700">{displayName}</p>
-                <p className="text-xs text-slate-400 capitalize">{displayRole}</p>
-              </div>
+            <NotificationCenter />
+            <div className="pl-3 border-l border-slate-200">
+              <UserMenu align="right" />
             </div>
           </div>
         </header>
@@ -205,7 +196,7 @@ export default function FleetDashboard() {
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50">
                     <tr>
-                      {['Booking ID', 'Customer', 'Vehicle', 'Dates', 'Total', 'Status', 'Change Status'].map((h) => (
+                      {['Booking ID', 'Customer', 'Vehicle', 'Route (Pickup → Drop)', 'Dates', 'Total', 'Status', 'Change Status'].map((h) => (
                         <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
                           {h}
                         </th>
@@ -221,6 +212,14 @@ export default function FleetDashboard() {
                           <p className="text-xs text-slate-400">{b.customerEmail}</p>
                         </td>
                         <td className="px-5 py-3 font-medium text-slate-700">{b.vehicleName}</td>
+                        <td className="px-5 py-3 text-xs text-slate-600">
+                          <div className="flex flex-col max-w-[200px]">
+                            <span className="font-medium text-slate-800 truncate">{b.pickupLocation || '—'}</span>
+                            {b.destination && (
+                              <span className="text-slate-400 truncate">↳ {b.destination}</span>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-5 py-3 text-xs text-slate-500 whitespace-nowrap">{b.pickupDate} → {b.returnDate}</td>
                         <td className="px-5 py-3 font-semibold text-slate-700">₹{(b.totalAmount || 0).toLocaleString()}</td>
                         <td className="px-5 py-3"><StatusBadge status={b.status} /></td>

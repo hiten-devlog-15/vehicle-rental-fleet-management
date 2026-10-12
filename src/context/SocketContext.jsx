@@ -19,6 +19,7 @@ export function SocketProvider({ children }) {
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState(null);
   const [notifications, setNotifications] = useState([]);
+  const [persistentRefreshKey, setPersistentRefreshKey] = useState(0);
 
   // Ref to track latest notifications without triggering re-subscriptions
   const notificationsRef = useRef(notifications);
@@ -133,12 +134,25 @@ export function SocketProvider({ children }) {
       });
     };
 
+    // Handle persistent notification from server (Experiment 9)
+    const handlePersistentNotification = (notif) => {
+      addNotification({
+        type: notif.type || 'system',
+        title: notif.title,
+        message: notif.message,
+        data: notif,
+      });
+      // Signal NotificationCenter to refresh its list
+      setPersistentRefreshKey((prev) => prev + 1);
+    };
+
     sock.on('connect', handleConnect);
     sock.on('disconnect', handleDisconnect);
     sock.on('connect_error', handleConnectError);
     sock.on('bookingCreated', handleBookingCreated);
     sock.on('bookingStatusUpdated', handleBookingStatusUpdated);
     sock.on('vehicleAvailabilityUpdated', handleVehicleAvailability);
+    sock.on('notification', handlePersistentNotification);
 
     if (sock.connected) {
       setIsConnected(true);
@@ -151,6 +165,7 @@ export function SocketProvider({ children }) {
       sock.off('bookingCreated', handleBookingCreated);
       sock.off('bookingStatusUpdated', handleBookingStatusUpdated);
       sock.off('vehicleAvailabilityUpdated', handleVehicleAvailability);
+      sock.off('notification', handlePersistentNotification);
     };
   }, [isAuthenticated, token, user, addNotification]);
 
@@ -162,6 +177,7 @@ export function SocketProvider({ children }) {
     addNotification,
     dismissNotification,
     clearNotifications,
+    persistentRefreshKey,
   };
 
   return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;

@@ -16,11 +16,14 @@
 
 const Booking = require('../models/Booking');
 const Vehicle = require('../models/Vehicle');
+const User = require('../models/User');
 const {
   emitBookingCreated,
   emitBookingStatusUpdated,
   emitVehicleAvailabilityUpdated,
 } = require('../socket');
+const { notify, notifyMany } = require('../services/notificationService');
+const { dispatchBookingCreatedNotifications } = require('../services/bookingEmailDispatcher');
 
 // ── Allowed fields for booking creation (mass-assignment protection) ──────────
 // customerId is NOT in this list — it is always set from req.user.id server-side.
@@ -28,13 +31,13 @@ const {
 const ALLOWED_BOOKING_FIELDS = [
   'customerName', 'customerEmail', 'customerPhone',
   'vehicleId', 'pickupDate', 'returnDate', 'days',
-  'totalAmount', 'pickupLocation', 'notes', 'status',
+  'totalAmount', 'pickupLocation', 'destination', 'notes', 'status',
 ];
 
 const ALLOWED_UPDATE_FIELDS = [
   'customerName', 'customerEmail', 'customerPhone',
   'pickupDate', 'returnDate', 'days',
-  'totalAmount', 'pickupLocation', 'notes',
+  'totalAmount', 'pickupLocation', 'destination', 'notes',
 ];
 
 /**
@@ -169,6 +172,17 @@ const createBooking = async (req, res, next) => {
       emitVehicleAvailabilityUpdated(updatedVehicle);
     }
 
+    // Automatic Professional Email Notifications (Customer + Fleet Manager)
+    // Non-blocking and fault-tolerant: delivery attempts are independent and
+    // will NEVER roll back the saved MongoDB booking or block the 201 response.
+    dispatchBookingCreatedNotifications({
+      booking,
+      vehicle,
+      clientUrl: req.headers.origin || process.env.CLIENT_URL,
+    }).catch((dispatchErr) => {
+      console.warn('⚠️ [Booking] Email notification dispatch warning:', dispatchErr.message);
+    });
+
     res.status(201).json({ success: true, data: booking });
   } catch (error) {
     next(error);
@@ -273,6 +287,54 @@ const updateBookingStatus = async (req, res, next) => {
     emitBookingStatusUpdated(booking);
     if (updatedVehicle) {
       emitVehicleAvailabilityUpdated(updatedVehicle);
+    }
+
+    // Experiment 9: Send persistent notifications + email for status changes
+    try {
+      const statusMessages = {
+        Confirmed: { title: 'Booking Confirmed', emoji: '✅', color: 'success' },
+        Active: { title: 'Booking Active', emoji: '🚗', color: 'status' },
+        Completed: { title: 'Booking Completed', emoji: '🏁', color: 'success' },
+        Cancelled: { title: 'Booking Cancelled', emoji: '❌', color: 'warning' },
+        Pending: { title: 'Booking Pending', emoji: '⏳', color: 'status' },
+      };
+
+      const statusInfo = statusMessages[status] || { title: 'Booking Updated', emoji: '📋', color: 'status' };
+
+      // Notify the customer
+      if (booking.customerId) {
+        const customer = await User.findById(booking.customerId).select('email').lean();
+        await notify({
+          recipientId: booking.customerId,
+          recipientEmail: customer?.email || booking.customerEmail,
+          type: statusInfo.color,
+          title: statusInfo.title,
+          message: `${statusInfo.emoji} Your booking for ${booking.vehicleName || 'a vehicle'} has been ${status.toLowerCase()}.`,
+          metadata: { bookingId: booking._id.toString(), vehicleName: booking.vehicleName, status },
+          emailOptions: {
+            subject: `${statusInfo.title}: ${booking.vehicleName || 'Vehicle'}`,
+            title: `${statusInfo.emoji} ${statusInfo.title}`,
+            message: `Your booking for <strong>${booking.vehicleName || 'a vehicle'}</strong> has been updated to <strong>${status}</strong>.`,
+            details: [
+              { label: 'Vehicle', value: booking.vehicleName || 'N/A' },
+              { label: 'New Status', value: status },
+              { label: 'Pickup Date', value: booking.pickupDate || 'N/A' },
+              { label: 'Return Date', value: booking.returnDate || 'N/A' },
+            ],
+          },
+        });
+      }
+
+      // Notify all managers
+      const managers = await User.find({ role: { $in: MANAGER_ROLES } }).select('_id email').lean();
+      await notifyMany(managers, {
+        type: 'status',
+        title: `Booking ${status}`,
+        message: `${booking.customerName || 'A customer'}'s booking for ${booking.vehicleName || 'a vehicle'} is now ${status}.`,
+        metadata: { bookingId: booking._id.toString(), vehicleName: booking.vehicleName, status },
+      });
+    } catch (notifErr) {
+      console.warn('⚠️ [Booking] Status notification failed:', notifErr.message);
     }
 
     res.status(200).json({ success: true, data: booking });

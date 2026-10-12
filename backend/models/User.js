@@ -57,6 +57,13 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // Optional avatar preset or photo string
+    avatar: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+
     // Role — server-enforced.
     // On registration, the backend always sets this to "customer".
     // The client cannot send a custom role during registration.

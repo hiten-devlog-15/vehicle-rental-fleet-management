@@ -32,6 +32,7 @@ export default function BookingForm({ initialVehicleId, onFormChange }) {
     pickupDate: '',
     returnDate: '',
     pickupLocation: '',
+    destination: '',
     notes: '',
   });
 
@@ -65,6 +66,7 @@ export default function BookingForm({ initialVehicleId, onFormChange }) {
     else if (form.pickupDate && form.returnDate <= form.pickupDate)
       e.returnDate = 'Return date must be after pickup date.';
     if (!form.pickupLocation.trim()) e.pickupLocation = 'Pickup location is required.';
+    if (!form.destination.trim()) e.destination = 'Destination is required.';
     return e;
   };
 
@@ -107,6 +109,7 @@ export default function BookingForm({ initialVehicleId, onFormChange }) {
       pricePerDay,
       totalAmount,
       pickupLocation: form.pickupLocation,
+      destination: form.destination,
       status: 'Confirmed',
       bookingDate: new Date().toISOString().split('T')[0],
       notes: form.notes,
@@ -141,7 +144,7 @@ export default function BookingForm({ initialVehicleId, onFormChange }) {
           ✅ Booking saved to MongoDB via REST API
         </p>
         <button
-          onClick={() => { setSubmitted(false); setApiError(''); setForm({ name: user?.name || '', email: user?.email || '', phone: '', vehicleId: initialVehicleId || '', pickupDate: '', returnDate: '', pickupLocation: '', notes: '' }); }}
+          onClick={() => { setSubmitted(false); setApiError(''); setForm({ name: user?.name || '', email: user?.email || '', phone: '', vehicleId: initialVehicleId || '', pickupDate: '', returnDate: '', pickupLocation: '', destination: '', notes: '' }); }}
           className="mt-6 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors"
         >
           Make Another Booking
@@ -234,6 +237,17 @@ export default function BookingForm({ initialVehicleId, onFormChange }) {
           onChange={(e) => handleChange('pickupLocation', e.target.value)}
           placeholder="e.g., Mumbai Airport Terminal 2, Andheri West"
           className={`${inputCls} ${errors.pickupLocation ? 'border-red-400 focus:ring-red-400' : ''}`}
+        />
+      </Field>
+
+      <Field label="Destination *" id="booking-destination" error={errors.destination}>
+        <input
+          id="booking-destination"
+          type="text"
+          value={form.destination}
+          onChange={(e) => handleChange('destination', e.target.value)}
+          placeholder="e.g., Pune Railway Station, Pune"
+          className={`${inputCls} ${errors.destination ? 'border-red-400 focus:ring-red-400' : ''}`}
         />
       </Field>
 

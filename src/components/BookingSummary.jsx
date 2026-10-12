@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react';
 import { Car, Calendar, MapPin } from 'lucide-react';
 
-export default function BookingSummary({ vehicle, pickupDate, returnDate, pickupLocation }) {
+export default function BookingSummary({ vehicle, pickupDate, returnDate, pickupLocation, destination }) {
   // useEffect (Experiment 2) — automatically recalculate whenever inputs change
   const [days, setDays] = useState(0);
   const [subtotal, setSubtotal] = useState(0);
@@ -77,14 +77,14 @@ export default function BookingSummary({ vehicle, pickupDate, returnDate, pickup
         <div className="flex items-start gap-3">
           <Calendar size={16} className="text-blue-500 mt-0.5 shrink-0" />
           <div>
-            <p className="text-xs text-slate-400">Pickup</p>
+            <p className="text-xs text-slate-400">Pickup Date</p>
             <p className="text-sm font-medium text-slate-700">{formatDate(pickupDate)}</p>
           </div>
         </div>
         <div className="flex items-start gap-3">
           <Calendar size={16} className="text-blue-500 mt-0.5 shrink-0" />
           <div>
-            <p className="text-xs text-slate-400">Return</p>
+            <p className="text-xs text-slate-400">Return Date</p>
             <p className="text-sm font-medium text-slate-700">{formatDate(returnDate)}</p>
           </div>
         </div>
@@ -92,8 +92,17 @@ export default function BookingSummary({ vehicle, pickupDate, returnDate, pickup
           <div className="flex items-start gap-3">
             <MapPin size={16} className="text-blue-500 mt-0.5 shrink-0" />
             <div>
-              <p className="text-xs text-slate-400">Location</p>
+              <p className="text-xs text-slate-400">Pickup Location</p>
               <p className="text-sm font-medium text-slate-700">{pickupLocation}</p>
+            </div>
+          </div>
+        )}
+        {destination && (
+          <div className="flex items-start gap-3">
+            <MapPin size={16} className="text-emerald-500 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-xs text-slate-400">Destination</p>
+              <p className="text-sm font-medium text-slate-700">{destination}</p>
             </div>
           </div>
         )}

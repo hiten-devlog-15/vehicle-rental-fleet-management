@@ -56,6 +56,11 @@ async function request(path, options = {}) {
     return json;
   }
 
+  // If response contains pagination metadata, return full JSON so callers access data and pagination
+  if (json && json.pagination !== undefined) {
+    return json;
+  }
+
   // Unwrap backend standard responses: { success: true, data: ... }
   if (json && json.success === true && json.data !== undefined) {
     return json.data;
@@ -162,5 +167,47 @@ export const loginUser = (credentials) =>
 /** GET /api/auth/me — fetch authenticated user profile using stored JWT token */
 export const getMe = () => request('/auth/me');
 
+/** PUT /api/auth/profile — update authenticated user personal details */
+export const updateProfile = (profileData) =>
+  request('/auth/profile', {
+    method: 'PUT',
+    body: JSON.stringify(profileData),
+  });
+
+/** PUT /api/auth/change-password — change authenticated user password */
+export const changePassword = (passwordData) =>
+  request('/auth/change-password', {
+    method: 'PUT',
+    body: JSON.stringify(passwordData),
+  });
+
 /** GET /api/auth/users — fetch all registered users from MongoDB Atlas */
 export const getUsers = () => request('/auth/users');
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NOTIFICATION API FUNCTIONS (Persistent In-App Notifications)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** GET /api/notifications — fetch paginated notifications */
+export const getNotifications = (page = 1, limit = 20) =>
+  request(`/notifications?page=${page}&limit=${limit}`);
+
+/** GET /api/notifications/unread-count — fetch unread badge count */
+export const getUnreadCount = () => request('/notifications/unread-count');
+
+/** PATCH /api/notifications/:id/read — mark single notification as read */
+export const markNotificationRead = (id) =>
+  request(`/notifications/${id}/read`, { method: 'PATCH' });
+
+/** PATCH /api/notifications/read-all — mark all notifications as read */
+export const markAllNotificationsRead = () =>
+  request('/notifications/read-all', { method: 'PATCH' });
+
+/** DELETE /api/notifications/:id — delete single notification */
+export const deleteNotification = (id) =>
+  request(`/notifications/${id}`, { method: 'DELETE' });
+
+/** DELETE /api/notifications — delete all notifications */
+export const deleteAllNotifications = () =>
+  request('/notifications', { method: 'DELETE' });
+

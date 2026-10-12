@@ -11,13 +11,18 @@ import {
   loginUser,
   registerUser,
   getMe,
+  updateProfile,
+  changePassword,
   getToken,
   setToken,
   removeToken,
 } from '../services/api';
 
-// Helper: Generate 2-character avatar initials from user name
-function getAvatar(name) {
+// Helper: Generate avatar string (preset avatar if set, else 2-character initials)
+function getAvatar(name, customAvatar) {
+  if (customAvatar && typeof customAvatar === 'string' && customAvatar.trim()) {
+    return customAvatar.trim();
+  }
   if (!name) return 'DF';
   const parts = name.trim().split(' ');
   if (parts.length >= 2) {
@@ -61,7 +66,7 @@ export function AuthProvider({ children }) {
           const userWithAvatar = {
             ...userData,
             id: userData.id || userData._id,
-            avatar: getAvatar(userData.name),
+            avatar: getAvatar(userData.name, userData.avatar),
           };
           setUser(userWithAvatar);
           setTokenState(storedToken);
@@ -111,7 +116,7 @@ export function AuthProvider({ children }) {
       const userWithAvatar = {
         ...rawUser,
         id: rawUser.id || rawUser._id,
-        avatar: getAvatar(rawUser.name),
+        avatar: getAvatar(rawUser.name, rawUser.avatar),
       };
 
       setToken(userToken, remember);
@@ -145,7 +150,7 @@ export function AuthProvider({ children }) {
         const userWithAvatar = {
           ...rawUser,
           id: rawUser.id || rawUser._id,
-          avatar: getAvatar(rawUser.name),
+          avatar: getAvatar(rawUser.name, rawUser.avatar),
         };
         setToken(userToken, true);
         localStorage.setItem('drivefleet_user', JSON.stringify(userWithAvatar));
@@ -162,6 +167,57 @@ export function AuthProvider({ children }) {
       };
     } catch (err) {
       return { success: false, error: err.message || 'Registration failed.' };
+    }
+  };
+
+  /**
+   * updateUserProfile — Updates personal information on backend PUT /api/auth/profile
+   */
+  const updateUserProfile = async (profileData) => {
+    try {
+      const response = await updateProfile(profileData);
+      const rawUser = response.user || response.data || response;
+      const userWithAvatar = {
+        ...rawUser,
+        id: rawUser.id || rawUser._id,
+        avatar: getAvatar(rawUser.name, rawUser.avatar),
+      };
+
+      if (localStorage.getItem('drivefleet_token')) {
+        localStorage.setItem('drivefleet_user', JSON.stringify(userWithAvatar));
+      } else {
+        sessionStorage.setItem('drivefleet_user', JSON.stringify(userWithAvatar));
+      }
+
+      setUser(userWithAvatar);
+      return {
+        success: true,
+        user: userWithAvatar,
+        message: response.message || 'Profile updated successfully',
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: err.message || 'Failed to update profile.',
+      };
+    }
+  };
+
+  /**
+   * updatePassword — Changes password on backend PUT /api/auth/change-password
+   */
+  const updatePassword = async (passwordData) => {
+    try {
+      const response = await changePassword(passwordData);
+      return {
+        success: true,
+        message: response.message || 'Password changed successfully.',
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: err.message || 'Failed to change password.',
+      };
     }
   };
 
@@ -184,6 +240,8 @@ export function AuthProvider({ children }) {
     loading,
     login,
     register,
+    updateUserProfile,
+    updatePassword,
     logout,
   };
 

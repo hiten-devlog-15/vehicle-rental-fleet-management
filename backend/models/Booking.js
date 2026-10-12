@@ -87,6 +87,11 @@ const bookingSchema = new mongoose.Schema(
       required: [true, 'Pickup location is required'],
       trim: true,
     },
+    destination: {
+      type: String,
+      required: [true, 'Destination is required'],
+      trim: true,
+    },
     notes: {
       type: String,
       default: '',

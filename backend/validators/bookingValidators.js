@@ -80,6 +80,12 @@ const createBookingRules = [
   body('pickupLocation')
     .trim()
     .notEmpty().withMessage('Pickup location is required'),
+
+  // Destination must not be empty
+  body('destination')
+    .trim()
+    .notEmpty().withMessage('Destination is required')
+    .isLength({ min: 2, max: 200 }).withMessage('Destination must be between 2 and 200 characters'),
 ];
 
 // ── Update Booking Validation Rules ─────────────────────────────────────────
@@ -97,6 +103,16 @@ const updateBookingRules = [
     .trim()
     .isEmail().withMessage('Customer email must be a valid email address')
     .normalizeEmail(),
+
+  body('pickupLocation')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('Pickup location cannot be empty'),
+
+  body('destination')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('Destination cannot be empty'),
 
   body('pickupDate')
     .optional()

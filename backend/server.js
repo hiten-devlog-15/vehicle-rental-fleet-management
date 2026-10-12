@@ -26,6 +26,7 @@ const connectDB = require('./config/db');
 const vehicleRoutes = require('./routes/vehicleRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const authRoutes = require('./routes/authRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 const { apiLimiter } = require('./middleware/rateLimiter');
 const errorHandler = require('./middleware/errorHandler');
 const { initSocket } = require('./socket');
@@ -126,6 +127,9 @@ app.use('/api/bookings', bookingRoutes);
 // ── Auth & User Management API routes ─────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 
+// ── Notification API routes ────────────────────────────────────────────────────
+app.use('/api/notifications', notificationRoutes);
+
 // ── 404 Handler ───────────────────────────────────────────────────────────────
 // Catches any request to an unknown API route and returns JSON (not an HTML error page).
 // This must come AFTER all valid routes.
@@ -147,12 +151,13 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`\n🚀 DriveFleet server running on port ${PORT}`);
-  console.log(`   Experiment: 8 — Real-Time Communication via WebSockets (Socket.IO)`);
-  console.log(`   Health:    http://localhost:${PORT}/api/health`);
-  console.log(`   Auth:      http://localhost:${PORT}/api/auth`);
-  console.log(`   Vehicles:  http://localhost:${PORT}/api/vehicles`);
-  console.log(`   Bookings:  http://localhost:${PORT}/api/bookings`);
-  console.log(`   Socket.IO: Ready for real-time events on port ${PORT}\n`);
+  console.log(`   Experiment: 9 — Complete Notification System (In-App + Real-Time + Email)`);
+  console.log(`   Health:        http://localhost:${PORT}/api/health`);
+  console.log(`   Auth:          http://localhost:${PORT}/api/auth`);
+  console.log(`   Vehicles:      http://localhost:${PORT}/api/vehicles`);
+  console.log(`   Bookings:      http://localhost:${PORT}/api/bookings`);
+  console.log(`   Notifications: http://localhost:${PORT}/api/notifications`);
+  console.log(`   Socket.IO:     Ready for real-time events on port ${PORT}\n`);
 });
 
 module.exports = { app, server };

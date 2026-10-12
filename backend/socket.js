@@ -42,6 +42,7 @@ const formatBookingPayload = (booking) => {
     days: booking.days,
     totalAmount: booking.totalAmount,
     pickupLocation: booking.pickupLocation,
+    destination: booking.destination || '',
     status: booking.status,
     bookingDate: booking.bookingDate,
     createdAt: booking.createdAt || new Date().toISOString(),
@@ -212,6 +213,7 @@ const emitVehicleAvailabilityUpdated = (vehicle) => {
 module.exports = {
   initSocket,
   getIO,
+  formatBookingPayload,
   emitBookingCreated,
   emitBookingStatusUpdated,
   emitVehicleAvailabilityUpdated,
