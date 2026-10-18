@@ -126,21 +126,6 @@ export default function Login() {
               </div>
             ))}
           </div>
-
-          {/* Demo credentials hint */}
-          <div className="mt-8 bg-white/10 backdrop-blur rounded-2xl p-4 text-left max-w-xs mx-auto">
-            <p className="text-xs font-bold text-blue-300 uppercase tracking-wider mb-2 flex items-center gap-1">
-              <Info size={12} /> Experiment 2 Demo Users
-            </p>
-            {DEMO_CREDENTIALS.map((c) => (
-              <div key={c.label} className="mb-1">
-                <p className="text-xs text-slate-300">
-                  <span className="font-semibold text-white">{c.label}:</span> {c.email}
-                </p>
-              </div>
-            ))}
-            <p className="text-xs text-slate-400 mt-2">All passwords: role + "123"</p>
-          </div>
         </div>
       </div>
 

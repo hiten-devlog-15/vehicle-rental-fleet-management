@@ -100,9 +100,6 @@ export default function CustomerDashboard() {
         {/* Logged-in context banner */}
         {isAuthenticated && (
           <div className="mx-6 mt-5 p-4 bg-blue-50 border border-blue-100 rounded-2xl">
-            <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-1">
-              Experiment 2 — useContext in action
-            </p>
             <p className="text-sm text-slate-700">
               Logged in as: <strong>{user.name}</strong> &nbsp;·&nbsp;
               Role: <strong className="capitalize">{user.role.replace('_', ' ')}</strong> &nbsp;·&nbsp;
