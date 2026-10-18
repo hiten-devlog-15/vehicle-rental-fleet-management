@@ -11,7 +11,7 @@ import { useAuth } from '../hooks/useAuth';
 const ALL_LINKS = [
   { to: '/dashboard',       icon: LayoutDashboard, label: 'Dashboard',          roles: ['customer', 'fleet_manager', 'manager', 'admin'] },
   { to: '/vehicles',        icon: Car,             label: 'Vehicles',           roles: ['customer', 'admin'] },
-  { to: '/booking',         icon: Calendar,        label: 'Book Vehicle',       roles: ['customer', 'admin'] },
+  { to: '/booking',         icon: Calendar,        label: 'Book Vehicle',       roles: ['admin'] },
   { to: '/maintenance',     icon: Wrench,          label: 'Maintenance',        roles: ['fleet_manager', 'manager', 'admin'] },
   { to: '/admin-dashboard', icon: Shield,          label: 'Admin Panel',        roles: ['admin'] },
   { to: '/profile',         icon: User,            label: 'Profile & Settings', roles: ['customer', 'fleet_manager', 'manager', 'admin'] },
