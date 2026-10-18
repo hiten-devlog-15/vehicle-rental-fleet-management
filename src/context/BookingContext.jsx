@@ -59,17 +59,31 @@ export function BookingProvider({ children }) {
 
     const handleBookingStatusUpdated = (updatedBooking) => {
       const id = updatedBooking._id || updatedBooking.id;
-      setBookings((prev) =>
-        prev.map((b) => (b.id === id || b._id === id ? { ...b, ...updatedBooking, id } : b))
-      );
+      const normalized = {
+        ...updatedBooking,
+        id,
+        vehicleId: updatedBooking.vehicleId?._id || updatedBooking.vehicleId,
+      };
 
-      // Free or occupy vehicle based on status
-      if (updatedBooking.vehicleId) {
-        const vehicleId = updatedBooking.vehicleId?._id || updatedBooking.vehicleId;
-        if (updatedBooking.status === 'Cancelled' || updatedBooking.status === 'Completed') {
-          setVehicleState(vehicleId, true, 'Available');
-        } else if (updatedBooking.status === 'Confirmed' || updatedBooking.status === 'Active') {
-          setVehicleState(vehicleId, false, 'Booked');
+      setBookings((prev) => {
+        const exists = prev.some((b) => b.id === id || b._id === id);
+        if (exists) {
+          return prev.map((b) => (b.id === id || b._id === id ? { ...b, ...normalized } : b));
+        }
+        return [normalized, ...prev];
+      });
+
+      // Free or occupy vehicle based on status, but NEVER override a vehicle under Maintenance
+      if (normalized.vehicleId && vehicleCtx?.vehicles) {
+        const vehicle = vehicleCtx.vehicles.find(
+          (v) => v.id === normalized.vehicleId || v._id === normalized.vehicleId
+        );
+        if (vehicle && vehicle.status === 'Maintenance') {
+          // Do not override Maintenance status
+        } else if (normalized.status === 'Cancelled' || normalized.status === 'Completed') {
+          setVehicleState(normalized.vehicleId, true, 'Available');
+        } else if (normalized.status === 'Confirmed' || normalized.status === 'Active') {
+          setVehicleState(normalized.vehicleId, false, 'Booked');
         }
       }
     };
@@ -172,14 +186,19 @@ export function BookingProvider({ children }) {
         )
       );
 
-      // Free the vehicle in VehicleContext
+      // Free the vehicle in VehicleContext if not under maintenance
       if (booking) {
-        setVehicleState(booking.vehicleId, true, 'Available');
+        const vehicle = vehicleCtx?.vehicles?.find(
+          (v) => v.id === booking.vehicleId || v._id === booking.vehicleId
+        );
+        if (!vehicle || vehicle.status !== 'Maintenance') {
+          setVehicleState(booking.vehicleId, true, 'Available');
+        }
       }
     } catch (err) {
       console.error('Failed to cancel booking:', err.message);
     }
-  }, [bookings, setVehicleState]);
+  }, [bookings, setVehicleState, vehicleCtx]);
 
   /**
    * updateBookingStatus — updates status via PATCH /api/bookings/:id/status
@@ -198,16 +217,23 @@ export function BookingProvider({ children }) {
       );
 
       if (booking) {
+        const vehicle = vehicleCtx?.vehicles?.find(
+          (v) => v.id === booking.vehicleId || v._id === booking.vehicleId
+        );
         if (status === 'Cancelled' || status === 'Completed') {
-          setVehicleState(booking.vehicleId, true, 'Available');
+          if (!vehicle || vehicle.status !== 'Maintenance') {
+            setVehicleState(booking.vehicleId, true, 'Available');
+          }
         } else if (status === 'Active' || status === 'Confirmed') {
-          setVehicleState(booking.vehicleId, false, 'Booked');
+          if (!vehicle || vehicle.status !== 'Maintenance') {
+            setVehicleState(booking.vehicleId, false, 'Booked');
+          }
         }
       }
     } catch (err) {
       console.error('Failed to update booking status:', err.message);
     }
-  }, [bookings, setVehicleState]);
+  }, [bookings, setVehicleState, vehicleCtx]);
 
   /** getCustomerBookings — returns bookings filtered by customerId or customer email */
   const getCustomerBookings = useCallback((customerId, userEmail) => {

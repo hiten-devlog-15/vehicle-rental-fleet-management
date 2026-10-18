@@ -24,6 +24,7 @@ const {
 } = require('../socket');
 const { notify, notifyMany } = require('../services/notificationService');
 const { dispatchBookingCreatedNotifications } = require('../services/bookingEmailDispatcher');
+const { reconcileVehicleAvailability } = require('../services/vehicleAvailabilityService');
 
 // ── Allowed fields for booking creation (mass-assignment protection) ──────────
 // customerId is NOT in this list — it is always set from req.user.id server-side.
@@ -268,19 +269,17 @@ const updateBookingStatus = async (req, res, next) => {
 
     let updatedVehicle = null;
     if (status === 'Cancelled' || status === 'Completed') {
-      // Vehicle is free again
-      updatedVehicle = await Vehicle.findByIdAndUpdate(
-        booking.vehicleId,
-        { status: 'Available', available: true },
-        { new: true }
-      );
+      // Reconcile vehicle availability safely (does NOT mark available if Maintenance or if another valid booking exists)
+      updatedVehicle = await reconcileVehicleAvailability(booking.vehicleId, booking._id);
     } else if (status === 'Confirmed' || status === 'Active') {
-      // Vehicle is occupied
-      updatedVehicle = await Vehicle.findByIdAndUpdate(
-        booking.vehicleId,
-        { status: 'Booked', available: false },
-        { new: true }
-      );
+      // Vehicle is occupied unless it is under maintenance
+      const v = await Vehicle.findById(booking.vehicleId);
+      if (v && v.status !== 'Maintenance') {
+        v.status = 'Booked';
+        v.available = false;
+        await v.save();
+        updatedVehicle = v;
+      }
     }
 
     // Experiment 8: Emit real-time events after persistence succeeds
@@ -355,11 +354,7 @@ const deleteBooking = async (req, res, next) => {
 
     let freedVehicle = null;
     if (booking.status === 'Confirmed' || booking.status === 'Active') {
-      freedVehicle = await Vehicle.findByIdAndUpdate(
-        booking.vehicleId,
-        { status: 'Available', available: true },
-        { new: true }
-      );
+      freedVehicle = await reconcileVehicleAvailability(booking.vehicleId, booking._id);
     }
 
     await Booking.findByIdAndDelete(req.params.id);

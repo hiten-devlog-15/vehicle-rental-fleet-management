@@ -7,7 +7,12 @@
 //   4. ObjectId validation now handled by validateObjectId middleware (not here)
 
 const Vehicle = require('../models/Vehicle');
-const { emitVehicleAvailabilityUpdated } = require('../socket');
+const {
+  emitVehicleAvailabilityUpdated,
+  emitVehicleCreated,
+  emitVehicleUpdated,
+  emitVehicleDeleted,
+} = require('../socket');
 
 // ── Allowed fields for mass-assignment protection ────────────────────────────
 // These are the only fields a client is permitted to set when creating/updating a vehicle.
@@ -76,6 +81,11 @@ const createVehicle = async (req, res, next) => {
     const vehicleData = pickFields(req.body, ALLOWED_CREATE_FIELDS);
 
     const vehicle = await Vehicle.create(vehicleData);
+
+    // Emit real-time event so dashboards reflect newly added vehicle immediately
+    emitVehicleCreated(vehicle);
+    emitVehicleAvailabilityUpdated(vehicle);
+
     res.status(201).json({ success: true, data: vehicle });
   } catch (error) {
     next(error);
@@ -97,6 +107,11 @@ const updateVehicle = async (req, res, next) => {
     if (!vehicle) {
       return res.status(404).json({ success: false, message: 'Vehicle not found' });
     }
+
+    // Emit real-time event for vehicle updates
+    emitVehicleUpdated(vehicle);
+    emitVehicleAvailabilityUpdated(vehicle);
+
     res.status(200).json({ success: true, data: vehicle });
   } catch (error) {
     next(error);
@@ -111,6 +126,10 @@ const deleteVehicle = async (req, res, next) => {
     if (!vehicle) {
       return res.status(404).json({ success: false, message: 'Vehicle not found' });
     }
+
+    // Emit real-time event for vehicle deletion
+    emitVehicleDeleted(req.params.id);
+
     res.status(200).json({ success: true, message: 'Vehicle deleted successfully' });
   } catch (error) {
     next(error);

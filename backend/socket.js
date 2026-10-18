@@ -105,9 +105,12 @@ const initSocket = (httpServer, allowedOrigin) => {
     const { id, role, email } = socket.user;
     console.log(`🔌 [Socket.IO] Client connected: ${email} (${role}) [Socket ID: ${socket.id}]`);
 
-    // Assign customer to private user room
+    // Assign customer to private user room (by ID and email)
     const userRoom = `user:${id}`;
     socket.join(userRoom);
+    if (email) {
+      socket.join(`user:${email.toLowerCase()}`);
+    }
 
     // If verified manager, assign to managers room
     if (MANAGER_ROLES.includes(role)) {
@@ -153,9 +156,12 @@ const emitBookingCreated = (booking) => {
     // Notify fleet managers
     io.to('managers').emit('bookingCreated', payload);
 
-    // Notify customer in their own room
+    // Notify customer in their own room (by ID and email)
     if (booking.customerId) {
       io.to(`user:${booking.customerId}`).emit('bookingCreated', payload);
+    }
+    if (booking.customerEmail) {
+      io.to(`user:${booking.customerEmail.toLowerCase()}`).emit('bookingCreated', payload);
     }
 
     console.log(`📢 [Socket.IO] Emitted bookingCreated event for booking ${payload.id}`);
@@ -174,9 +180,12 @@ const emitBookingStatusUpdated = (booking) => {
     if (!io) return;
     const payload = formatBookingPayload(booking);
 
-    // Notify customer
+    // Notify customer (by ID and email)
     if (booking.customerId) {
       io.to(`user:${booking.customerId}`).emit('bookingStatusUpdated', payload);
+    }
+    if (booking.customerEmail) {
+      io.to(`user:${booking.customerEmail.toLowerCase()}`).emit('bookingStatusUpdated', payload);
     }
 
     // Notify managers
@@ -210,6 +219,56 @@ const emitVehicleAvailabilityUpdated = (vehicle) => {
   }
 };
 
+/**
+ * Emit event when a new vehicle is added to the fleet
+ */
+const emitVehicleCreated = (vehicle) => {
+  try {
+    if (!io) return;
+    const vehicleObj = vehicle.toObject ? vehicle.toObject() : vehicle;
+    const payload = {
+      ...vehicleObj,
+      id: vehicleObj._id ? vehicleObj._id.toString() : (vehicleObj.id || ''),
+    };
+    io.emit('vehicleCreated', payload);
+    console.log(`📢 [Socket.IO] Emitted vehicleCreated for ${payload.name}`);
+  } catch (error) {
+    console.error('⚠️ [Socket.IO] Failed to emit vehicleCreated:', error.message);
+  }
+};
+
+/**
+ * Emit event when a vehicle is updated
+ */
+const emitVehicleUpdated = (vehicle) => {
+  try {
+    if (!io) return;
+    const vehicleObj = vehicle.toObject ? vehicle.toObject() : vehicle;
+    const payload = {
+      ...vehicleObj,
+      id: vehicleObj._id ? vehicleObj._id.toString() : (vehicleObj.id || ''),
+    };
+    io.emit('vehicleUpdated', payload);
+    console.log(`📢 [Socket.IO] Emitted vehicleUpdated for ${payload.name}`);
+  } catch (error) {
+    console.error('⚠️ [Socket.IO] Failed to emit vehicleUpdated:', error.message);
+  }
+};
+
+/**
+ * Emit event when a vehicle is deleted from the fleet
+ */
+const emitVehicleDeleted = (vehicleId) => {
+  try {
+    if (!io) return;
+    const idStr = vehicleId ? vehicleId.toString() : '';
+    io.emit('vehicleDeleted', { id: idStr, _id: idStr });
+    console.log(`📢 [Socket.IO] Emitted vehicleDeleted for ${idStr}`);
+  } catch (error) {
+    console.error('⚠️ [Socket.IO] Failed to emit vehicleDeleted:', error.message);
+  }
+};
+
 module.exports = {
   initSocket,
   getIO,
@@ -217,4 +276,7 @@ module.exports = {
   emitBookingCreated,
   emitBookingStatusUpdated,
   emitVehicleAvailabilityUpdated,
+  emitVehicleCreated,
+  emitVehicleUpdated,
+  emitVehicleDeleted,
 };

@@ -134,6 +134,18 @@ export function SocketProvider({ children }) {
       });
     };
 
+    const handleVehicleCreated = (vehicle) => {
+      const isManager = user && ['fleet_manager', 'manager', 'admin'].includes(user.role);
+      if (isManager) {
+        addNotification({
+          type: 'vehicle',
+          title: 'Vehicle Added to Fleet',
+          message: `${vehicle.name} (${vehicle.registrationNo || vehicle.type}) is now active.`,
+          data: vehicle,
+        });
+      }
+    };
+
     // Handle persistent notification from server (Experiment 9)
     const handlePersistentNotification = (notif) => {
       addNotification({
@@ -152,6 +164,7 @@ export function SocketProvider({ children }) {
     sock.on('bookingCreated', handleBookingCreated);
     sock.on('bookingStatusUpdated', handleBookingStatusUpdated);
     sock.on('vehicleAvailabilityUpdated', handleVehicleAvailability);
+    sock.on('vehicleCreated', handleVehicleCreated);
     sock.on('notification', handlePersistentNotification);
 
     if (sock.connected) {
@@ -165,6 +178,7 @@ export function SocketProvider({ children }) {
       sock.off('bookingCreated', handleBookingCreated);
       sock.off('bookingStatusUpdated', handleBookingStatusUpdated);
       sock.off('vehicleAvailabilityUpdated', handleVehicleAvailability);
+      sock.off('vehicleCreated', handleVehicleCreated);
       sock.off('notification', handlePersistentNotification);
     };
   }, [isAuthenticated, token, user, addNotification]);

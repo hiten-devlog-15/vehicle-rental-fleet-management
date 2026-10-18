@@ -29,7 +29,7 @@ export function VehicleProvider({ children }) {
   // Experiment 8: Real-time Socket.IO connection
   const { socket, isConnected } = useSocket();
 
-  // ── Experiment 8: Real-time vehicle availability listener ───────────────────
+  // ── Experiment 8: Real-time vehicle events listener ─────────────────────────
   useEffect(() => {
     if (!socket) return;
 
@@ -44,10 +44,42 @@ export function VehicleProvider({ children }) {
       );
     };
 
+    const handleVehicleCreated = (newVehicle) => {
+      const normalized = {
+        ...newVehicle,
+        id: newVehicle._id || newVehicle.id,
+      };
+      setVehicles((prev) => {
+        if (prev.some((v) => v.id === normalized.id || v._id === normalized.id)) {
+          return prev;
+        }
+        return [...prev, normalized];
+      });
+    };
+
+    const handleVehicleUpdated = (updatedVehicle) => {
+      const id = updatedVehicle._id || updatedVehicle.id;
+      const normalized = { ...updatedVehicle, id };
+      setVehicles((prev) =>
+        prev.map((v) => (v.id === id || v._id === id ? { ...v, ...normalized } : v))
+      );
+    };
+
+    const handleVehicleDeleted = (data) => {
+      const id = data.id || data._id;
+      setVehicles((prev) => prev.filter((v) => v.id !== id && v._id !== id));
+    };
+
     socket.on('vehicleAvailabilityUpdated', handleVehicleAvailability);
+    socket.on('vehicleCreated', handleVehicleCreated);
+    socket.on('vehicleUpdated', handleVehicleUpdated);
+    socket.on('vehicleDeleted', handleVehicleDeleted);
 
     return () => {
       socket.off('vehicleAvailabilityUpdated', handleVehicleAvailability);
+      socket.off('vehicleCreated', handleVehicleCreated);
+      socket.off('vehicleUpdated', handleVehicleUpdated);
+      socket.off('vehicleDeleted', handleVehicleDeleted);
     };
   }, [socket]);
 

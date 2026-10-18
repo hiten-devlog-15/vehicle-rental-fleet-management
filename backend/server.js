@@ -30,6 +30,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const { apiLimiter } = require('./middleware/rateLimiter');
 const errorHandler = require('./middleware/errorHandler');
 const { initSocket } = require('./socket');
+const { initAutoCompletionScheduler } = require('./services/autoCompletionService');
 
 // ── Initialize Express app ────────────────────────────────────────────────────
 const app = express();
@@ -77,8 +78,10 @@ initSocket(server, allowedOrigin);
 // or crash the server (a basic denial-of-service protection).
 app.use(express.json({ limit: '10kb' }));
 
-// ── Connect to MongoDB ────────────────────────────────────────────────────────
-connectDB();
+// ── Connect to MongoDB & Initialize Auto-Completion Scheduler ─────────────────
+connectDB().then(() => {
+  initAutoCompletionScheduler();
+});
 
 // ── API Rate Limiter ─────────────────────────────────────────────────────────
 // Applies to ALL routes under /api/* (100 requests per 15 minutes per IP).
