@@ -1,18 +1,11 @@
 // Login.jsx — Experiment 2: uses useAuth() for mock authentication + useEffect for page title
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Car, Lock, Mail, Info } from 'lucide-react';
+import { Eye, EyeOff, Car, Lock, Mail } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 const inputCls =
   'w-full pl-10 pr-4 py-3 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder-slate-400 bg-white';
-
-// Quick-fill credentials for demonstration
-const DEMO_CREDENTIALS = [
-  { label: 'Customer', email: 'customer@drivefleet.com', password: 'customer123', color: 'blue' },
-  { label: 'Fleet Manager', email: 'manager@drivefleet.com', password: 'manager123', color: 'emerald' },
-  { label: 'Admin', email: 'admin@drivefleet.com', password: 'admin123', color: 'purple' },
-];
 
 export default function Login() {
   const [form, setForm] = useState({ email: '', password: '', remember: false });
@@ -81,13 +74,6 @@ export default function Login() {
     }
   };
 
-  // Quick-fill a demo credential
-  const fillDemo = (cred) => {
-    setForm((f) => ({ ...f, email: cred.email, password: cred.password }));
-    setErrors({});
-    setAuthError('');
-  };
-
   return (
     <div className="min-h-screen flex">
       {/* Left panel — decorative */}
@@ -144,32 +130,12 @@ export default function Login() {
 
           <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-8">
             <h1 className="text-2xl font-bold text-slate-800 mb-1">Sign In</h1>
-            <p className="text-sm text-slate-500 mb-5">
+            <p className="text-sm text-slate-500 mb-6">
               Don't have an account?{' '}
               <Link to="/register" className="text-blue-600 font-semibold hover:text-blue-700">
                 Create one free
               </Link>
             </p>
-
-            {/* Quick-fill demo buttons (Experiment 2 demo feature) */}
-            <div className="mb-5 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-              <p className="text-xs font-semibold text-amber-700 mb-2 flex items-center gap-1">
-                <Info size={12} /> Quick Login (Experiment 2 Demo)
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {DEMO_CREDENTIALS.map((c) => (
-                  <button
-                    key={c.label}
-                    type="button"
-                    id={`demo-login-${c.label.toLowerCase().replace(' ', '-')}`}
-                    onClick={() => fillDemo(c)}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-amber-300 text-slate-700 hover:bg-amber-100 transition-colors"
-                  >
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-            </div>
 
             {/* Auth error */}
             {authError && (
@@ -191,7 +157,7 @@ export default function Login() {
                     type="email"
                     value={form.email}
                     onChange={(e) => { setForm({ ...form, email: e.target.value }); setErrors({ ...errors, email: undefined }); setAuthError(''); }}
-                    placeholder="you@drivefleet.com"
+                    placeholder="name@example.com"
                     className={`${inputCls} ${errors.email ? 'border-red-400 focus:ring-red-400' : ''}`}
                   />
                 </div>
