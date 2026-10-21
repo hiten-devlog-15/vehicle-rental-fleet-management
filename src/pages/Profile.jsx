@@ -374,46 +374,48 @@ export default function Profile() {
               </div>
             </div>
 
-            {/* Avatar Selector Strip */}
-            <div className="mt-6 pt-5 border-t border-slate-100">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                  <Sparkles size={14} className="text-blue-600" />
-                  Choose Profile Avatar Style:
-                </label>
-                <span className="text-[11px] text-slate-400">
-                  Select a preset emoji icon or use your name initials
-                </span>
+            {/* Avatar Selector Strip (hidden for Admin role) */}
+            {user?.role !== 'admin' && (
+              <div className="mt-6 pt-5 border-t border-slate-100">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                    <Sparkles size={14} className="text-blue-600" />
+                    Choose Profile Avatar Style:
+                  </label>
+                  <span className="text-[11px] text-slate-400">
+                    Select a preset emoji icon or use your name initials
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                  {AVATAR_PRESETS.map((preset) => {
+                    const isSelected =
+                      preset.id === 'initials'
+                        ? !profileForm.avatar
+                        : profileForm.avatar === preset.id;
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() =>
+                          setProfileForm((prev) => ({
+                            ...prev,
+                            avatar: preset.id === 'initials' ? '' : preset.id,
+                          }))
+                        }
+                        className={`px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer border ${
+                          isSelected
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {preset.icon && <span>{preset.icon}</span>}
+                        <span>{preset.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                {AVATAR_PRESETS.map((preset) => {
-                  const isSelected =
-                    preset.id === 'initials'
-                      ? !profileForm.avatar
-                      : profileForm.avatar === preset.id;
-                  return (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() =>
-                        setProfileForm((prev) => ({
-                          ...prev,
-                          avatar: preset.id === 'initials' ? '' : preset.id,
-                        }))
-                      }
-                      className={`px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer border ${
-                        isSelected
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      {preset.icon && <span>{preset.icon}</span>}
-                      <span>{preset.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
